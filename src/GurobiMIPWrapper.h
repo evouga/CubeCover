@@ -17,6 +17,7 @@ bool GurobiMIPWrapper(const Eigen::SparseMatrix<double> &constraints,
     Eigen::VectorXd &result,
     const Eigen::VectorXd &b,
     const std::vector<int> &intvars,
-    double tol);
+    double tol,
+    bool verbose);
 
 #endif

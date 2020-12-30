@@ -9,7 +9,8 @@ bool GurobiMIPWrapper(const Eigen::SparseMatrix<double>& constraints,
     Eigen::VectorXd& result,
     const Eigen::VectorXd& b,
     const std::vector<int> &intvars,
-    double tol)
+    double tol,
+    bool verbose)
 {
     try
     {
@@ -45,7 +46,8 @@ bool GurobiMIPWrapper(const Eigen::SparseMatrix<double>& constraints,
 
         GRBEnv env = GRBEnv(true);
         env.set("LogFile", "gurobimip.log");
-        env.start();
+        env.set("OutputFlag", verbose ? "1" : "0");
+        env.start();        
 
         // Set up variables
 

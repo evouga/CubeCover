@@ -181,7 +181,7 @@ namespace CubeCover {
             intdofs[i] = regulardofs + i;
         }        
 
-        if (!GurobiMIPWrapper(C, MIPA, result, MIPrhs, intdofs, 1e-6))
+        if (!GurobiMIPWrapper(C, MIPA, result, MIPrhs, intdofs, 1e-6, verbose))
         {
             if (verbose)
             {
