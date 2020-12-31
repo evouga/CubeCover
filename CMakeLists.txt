@@ -33,3 +33,11 @@ set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 14)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD_REQUIRED ON)
 
 install(TARGETS ${PROJECT_NAME})
+
+# example programs
+
+set(BUILD_SINGULARITY_VIEWER ON CACHE BOOL "Build Singularity Viewer")
+
+if(BUILD_SINGULARITY_VIEWER)
+  add_subdirectory(tools/singularityviewer)
+endif()
