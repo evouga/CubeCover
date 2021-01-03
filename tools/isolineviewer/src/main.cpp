@@ -1,50 +1,40 @@
 #include "polyscope/polyscope.h"
 #include "polyscope/curve_network.h"
 #include <Eigen/Core>
-#include "ReadFrameField.h"
 #include <iostream>
-#include "FrameField.h"
 #include "TetMeshConnectivity.h"
-#include "SingularCurveNetwork.h"
-#include "readMeshFixed.h"
+#include "ReadHexEx.h"
 #include "polyscope/surface_mesh.h"
+#include "ExtractIsolines.h"
 
 int main(int argc, char *argv[])
 {
-    if (argc != 3 && argc != 4)
+    if (argc != 2)
     {
-        std::cerr << "Usage: singularityviewer (.mesh file) (.fra file) [.perm file]" << std::endl;
+        std::cerr << "Usage: isolineviewer (.hexex file)" << std::endl;
         return -1;
     }
 
     Eigen::MatrixXd V;
     Eigen::MatrixXi T;
+
+    std::string hexexfile = argv[1];
     
-    std::string meshfile = argv[1];
-    std::string frafile = argv[2];
-    std::string permfile;
-    if (argc == 4)
-        permfile = argv[3];
-
-    Eigen::MatrixXi F;
-    if (!CubeCover::readMESH(meshfile, V, T, F))
+    Eigen::MatrixXd values;
+    if (!CubeCover::readHexEx(hexexfile, V, T, values))
+    {
+        std::cerr << "error reading the .hexex file" << std::endl;
         return -1;
-
-    Eigen::MatrixXd frames;
-    Eigen::MatrixXi assignments;
-    if (!CubeCover::readFrameField(frafile, permfile, T, frames, assignments, true))
-        return -1;
+    }
 
     CubeCover::TetMeshConnectivity mesh(T);
 
-    CubeCover::FrameField* field = CubeCover::fromFramesAndAssignments(mesh, frames, assignments, true);
-    if (!field)
-        return -1;
-
+    
     Eigen::MatrixXd P;
     Eigen::MatrixXi E;
-    extractSingularCurveNetwork(V, mesh, *field, P, E);
 
+    extractIsolines(V, mesh, values, P, E);
+    
     // make a mesh out of all of the boundary faces
     int nbdry = 0;
     int nfaces = mesh.nFaces();
@@ -62,7 +52,7 @@ int main(int argc, char *argv[])
             for (int j = 0; j < 3; j++)
             {
                 bdryF(curidx, j) = mesh.faceVertex(i, j);
-                
+
             }
             // fix triangle orientations
             int tet = mesh.faceTet(i, 0);
@@ -76,12 +66,12 @@ int main(int argc, char *argv[])
 
     polyscope::init();
 
-    polyscope::registerCurveNetwork("Singular Curves", P, E);
+    auto *psCurves = polyscope::registerCurveNetwork("Isolines", P, E);
+    psCurves->setRadius(0.01);
     auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", V, bdryF);
     psMesh->setTransparency(0.2);
+    
 
     // visualize!
     polyscope::show();
-
-    delete field;
 }

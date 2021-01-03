@@ -8,8 +8,17 @@ if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE "Release")
 endif()
 
+set(BUILD_SINGULARITY_VIEWER ON CACHE BOOL "Build Singularity Viewer")
+set(BUILD_ISOLINE_VIEWER ON CACHE BOOL "Build Isoline Viewer")
+set(BUILD_BINARIES ON CACHE BOOL "Build Command-line Binaries")
+
 # Find Eigen
 find_package(Eigen3 3.3 REQUIRED)
+
+if(BUILD_SINGULARITY_VIEWER OR BUILD_ISOLINE_VIEWER)
+  # Find Polyscope
+  find_package(Polyscope REQUIRED)
+endif()
 
 # use gurobi
 find_package(GUROBI)
@@ -36,8 +45,14 @@ install(TARGETS ${PROJECT_NAME})
 
 # example programs
 
-set(BUILD_SINGULARITY_VIEWER ON CACHE BOOL "Build Singularity Viewer")
-
 if(BUILD_SINGULARITY_VIEWER)
   add_subdirectory(tools/singularityviewer)
+endif()
+
+if(BUILD_ISOLINE_VIEWER)
+  add_subdirectory(tools/isolineviewer)
+endif()
+
+if(BUILD_BINARIES)
+  add_subdirectory(tools/seamless)
 endif()
