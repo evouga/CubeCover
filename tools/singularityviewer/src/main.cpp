@@ -23,8 +23,13 @@ int main(int argc, char *argv[])
     std::string meshfile = argv[1];
     std::string frafile = argv[2];
     std::string permfile;
+
+    bool recomputeperms = false;
+
     if (argc == 4)
         permfile = argv[3];
+    else
+        recomputeperms = true;
 
     Eigen::MatrixXi F;
     if (!CubeCover::readMESH(meshfile, V, T, F))
@@ -41,9 +46,21 @@ int main(int argc, char *argv[])
     if (!field)
         return -1;
 
-    Eigen::MatrixXd P;
-    Eigen::MatrixXi E;
-    extractSingularCurveNetwork(V, mesh, *field, P, E);
+    if (recomputeperms)
+    {
+        std::cout << "No face assignments provided, recomputing: ";
+        std::cout.flush();
+        field->computeLocalAssignments();
+        std::cout << "found " << field->nSingularEdges() << " singular edges" << std::endl;
+    }
+
+    Eigen::MatrixXd Pblack;
+    Eigen::MatrixXi Eblack;
+    Eigen::MatrixXd Pblue;
+    Eigen::MatrixXi Eblue;
+    Eigen::MatrixXd Pgreen;
+    Eigen::MatrixXi Egreen;
+    extractSingularCurveNetwork(V, mesh, *field, Pgreen, Egreen, Pblue, Eblue, Pblack, Eblack);
 
     // make a mesh out of all of the boundary faces
     int nbdry = 0;
@@ -76,9 +93,18 @@ int main(int argc, char *argv[])
 
     polyscope::init();
 
-    polyscope::registerCurveNetwork("Singular Curves", P, E);
+    auto *green = polyscope::registerCurveNetwork("Singular Curves (+1/4)", Pgreen, Egreen);
+    green->setColor({ 0.0,1.0,0.0 });
+
+    auto *blue = polyscope::registerCurveNetwork("Singular Curves (-1/4)", Pblue, Eblue);
+    blue->setColor({ 0.0,0.0,1.0 });
+
+    auto *black = polyscope::registerCurveNetwork("Singular Curves (irregular)", Pblack, Eblack);
+    black->setColor({ 0.0,0.0,0.0 });
+
     auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", V, bdryF);
     psMesh->setTransparency(0.2);
+    psMesh->setSurfaceColor({ 0.5,0.5,0.0 });
 
     // visualize!
     polyscope::show();

@@ -10,9 +10,9 @@
 namespace CubeCover {
 
     bool integrate(const Eigen::MatrixXd& V, const FrameField& field, Eigen::MatrixXd& soupValues, double scale, 
-        double MIPtol, bool integerGrid, bool forceBoundaryAlignment, bool verbose)
+        double MIPtol, CubeCoverOptions::ParameterizationType type, bool forceBoundaryAlignment, bool verbose)
     {
-        if (integerGrid)
+        if (type == CubeCoverOptions::ParameterizationType::PT_INTEGERGRID)
         {
             std::cerr << "Integer-grid parameterization not yet supported" << std::endl;
             return false;
@@ -142,7 +142,7 @@ namespace CubeCover {
             {
                 for (int l = 0; l < vpf; l++)
                 {
-                    rhs[3 * vpf * i + 3 * l + k] = scale * field.faceFrame(i)(l, k);
+                    rhs[3 * vpf * i + 3 * l + k] = scale * field.tetFrame(i)(l, k);
                 }
             }
         }
@@ -175,11 +175,16 @@ namespace CubeCover {
         Eigen::VectorXd MIPrhs = -D.transpose() * M * rhs;
 
         Eigen::VectorXd result;
-        std::vector<int> intdofs(jumpdofs);
-        for (int i = 0; i < jumpdofs; i++)
+        std::vector<int> intdofs;
+        
+        if (type == CubeCoverOptions::ParameterizationType::PT_SEAMLESS)
         {
-            intdofs[i] = regulardofs + i;
-        }        
+            intdofs.resize(jumpdofs);
+            for (int i = 0; i < jumpdofs; i++)
+            {
+                intdofs[i] = regulardofs + i;
+            }
+        }
 
         if (!GurobiMIPWrapper(C, MIPA, result, MIPrhs, intdofs, 1e-6, verbose))
         {

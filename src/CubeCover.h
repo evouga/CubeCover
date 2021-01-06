@@ -26,11 +26,17 @@ namespace CubeCover
          * edges aligned to the integer parameter grid. (This additional property
          * is necessary for meshability near singularities and is required by
          * downstream tools such as HexEx).
+         * PT_DISCONTINUOUS simply integrates the frame field on the input
+         * tetrahedral mesh, cut into a simply-connected region using an
+         * arbitrary set of seam faces (without enforcing continuity of the
+         * integer parameter grid across the seam). Useful mainly for 
+         * debugging.
          */
         enum struct ParameterizationType
         {
             PT_SEAMLESS,
-            PT_INTEGERGRID
+            PT_INTEGERGRID,
+            PT_DISCONTINUOUS
         } parameterizationType;
 
         /*

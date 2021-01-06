@@ -2,6 +2,7 @@
 #define INTEGRATION_H
 
 #include <Eigen/Core>
+#include "CubeCover.h"
 
 namespace CubeCover {
 
@@ -17,7 +18,7 @@ namespace CubeCover {
      * Optionally also enforces integer-grid and boundary alignment constraints.
      */
     bool integrate(const Eigen::MatrixXd& V, const FrameField& field, Eigen::MatrixXd& soupValues, double scale, 
-        double MIPtol, bool integerGrid, bool forceBoundaryAlignment, bool verbose);
+        double MIPtol, CubeCoverOptions::ParameterizationType type, bool forceBoundaryAlignment, bool verbose);
 
 };
 

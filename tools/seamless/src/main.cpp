@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
     CubeCover::CubeCoverOptions opt;
     opt.parameterizationType = CubeCover::CubeCoverOptions::ParameterizationType::PT_SEAMLESS;
     opt.assignmentHandling = (argc == 5 ? CubeCover::CubeCoverOptions::AssignmentHandling::AH_USEPROVIDED : CubeCover::CubeCoverOptions::AssignmentHandling::AH_RECOMPUTE);
-    opt.verbose = true;    
+    opt.verbose = true;
     Eigen::MatrixXd values;
     if (!CubeCover::cubeCover(V, T, frames, assignments, values, opt))
     {        

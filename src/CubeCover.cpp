@@ -43,7 +43,7 @@ namespace CubeCover
         if (!field)
             return false;
 
-        integrate(V, *field, parameterization, opt.scale, opt.MIPtol, opt.parameterizationType == CubeCoverOptions::ParameterizationType::PT_INTEGERGRID, 
+        integrate(V, *field, parameterization, opt.scale, opt.MIPtol, opt.parameterizationType, 
             opt.boundaryConditions == CubeCoverOptions::BoundaryConditions::BC_FORCEINTEGER, opt.verbose);
 
         delete field;

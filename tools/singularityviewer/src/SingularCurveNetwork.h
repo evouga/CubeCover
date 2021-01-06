@@ -9,9 +9,13 @@ namespace CubeCover
     class TetMeshConnectivity;
 };
 
-void extractSingularCurveNetwork(const Eigen::MatrixXd &V, 
-    const CubeCover::TetMeshConnectivity &mesh, 
-    const CubeCover::FrameField& field, 
-    Eigen::MatrixXd& P, Eigen::MatrixXi& E);
+
+void extractSingularCurveNetwork(const Eigen::MatrixXd& V,
+    const CubeCover::TetMeshConnectivity& mesh,
+    const CubeCover::FrameField& field,
+    Eigen::MatrixXd& Pgreen, Eigen::MatrixXi& Egreen,
+    Eigen::MatrixXd& Pblue, Eigen::MatrixXi& Eblue,
+    Eigen::MatrixXd& Pblack, Eigen::MatrixXi& Eblack
+);
 
 #endif

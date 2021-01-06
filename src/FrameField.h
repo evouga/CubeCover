@@ -63,7 +63,7 @@ namespace CubeCover {
         void computeLocalAssignments();
 
         const AssignmentGroup& faceAssignment(int faceid) const { return faceperms[faceid]; }
-        const Eigen::MatrixXd& faceFrame(int faceid) const { return frames[faceid]; }
+        const Eigen::MatrixXd& tetFrame(int tetid) const { return frames[tetid]; }
 
     private:
         const TetMeshConnectivity& mesh;

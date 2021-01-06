@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     polyscope::init();
 
     auto *psCurves = polyscope::registerCurveNetwork("Isolines", P, E);
-    psCurves->setRadius(0.01);
+    psCurves->setRadius(0.001);
     auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", V, bdryF);
     psMesh->setTransparency(0.2);
     
