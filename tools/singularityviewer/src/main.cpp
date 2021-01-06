@@ -8,6 +8,8 @@
 #include "SingularCurveNetwork.h"
 #include "readMeshFixed.h"
 #include "polyscope/surface_mesh.h"
+#include "FrameFieldVis.h"
+#include "polyscope/point_cloud.h"
 
 int main(int argc, char *argv[])
 {
@@ -62,6 +64,10 @@ int main(int argc, char *argv[])
     Eigen::MatrixXi Egreen;
     extractSingularCurveNetwork(V, mesh, *field, Pgreen, Egreen, Pblue, Eblue, Pblack, Eblack);
 
+    Eigen::MatrixXd centroids;
+    std::vector<Eigen::MatrixXd> framefieldvecs;
+    buildFrameVectors(V, mesh, *field, 1.0, centroids, framefieldvecs);
+
     // make a mesh out of all of the boundary faces
     int nbdry = 0;
     int nfaces = mesh.nFaces();
@@ -92,6 +98,21 @@ int main(int argc, char *argv[])
     }
 
     polyscope::init();
+
+    auto *tetc = polyscope::registerPointCloud("Centroids", centroids);
+    glm::vec3 framecolor(0.1, 0.1, 0.1);
+    tetc->setPointColor(framecolor);
+    tetc->setPointRadius(0.001);
+    int vpf = framefieldvecs.size();
+    for (int i = 0; i < vpf; i++)
+    {
+        std::stringstream ss;
+        ss << "Frame Vector " << i;
+        auto *vf = tetc->addVectorQuantity(ss.str(), framefieldvecs[i]);
+        vf->setVectorColor(framecolor);
+        vf->setVectorRadius(0.001);
+        vf->setEnabled(true);
+    }
 
     auto *green = polyscope::registerCurveNetwork("Singular Curves (+1/4)", Pgreen, Egreen);
     green->setColor({ 0.0,1.0,0.0 });
