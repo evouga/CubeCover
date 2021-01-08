@@ -10,6 +10,8 @@
 #include "polyscope/surface_mesh.h"
 #include "FrameFieldVis.h"
 #include "polyscope/point_cloud.h"
+#include <random>
+#include "WriteFrameField.h"
 
 int main(int argc, char *argv[])
 {
@@ -97,11 +99,40 @@ int main(int argc, char *argv[])
         }
     }
 
+    // visualize the seams
+
+    std::vector<int> seamfaces;
+
+    for (int i = 0; i < nfaces; i++)
+    {
+        if (!field->faceAssignment(i).isIdentity())
+        {
+            seamfaces.push_back(i);
+        }
+    }
+
+    int nseamtris = seamfaces.size();
+
+    Eigen::MatrixXd seamV(3 * nseamtris, 3);
+    Eigen::MatrixXi seamF(nseamtris, 3);
+    for (int i = 0; i < nseamtris; i++)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            seamF(i, j) = 3 * i + j;
+            seamV.row(3 * i + j) = V.row(mesh.faceVertex(seamfaces[i], j));
+        }
+    }
+
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+
     polyscope::init();
 
     auto *tetc = polyscope::registerPointCloud("Centroids", centroids);
-    glm::vec3 framecolor(0.1, 0.1, 0.1);
-    tetc->setPointColor(framecolor);
+    glm::vec3 dotcolor(0.1, 0.1, 0.1);
+    tetc->setPointColor(dotcolor);
     tetc->setPointRadius(0.001);
     int vpf = framefieldvecs.size();
     for (int i = 0; i < vpf; i++)
@@ -109,7 +140,7 @@ int main(int argc, char *argv[])
         std::stringstream ss;
         ss << "Frame Vector " << i;
         auto *vf = tetc->addVectorQuantity(ss.str(), framefieldvecs[i]);
-        vf->setVectorColor(framecolor);
+        vf->setVectorColor({ dist(rng),dist(rng),dist(rng) });
         vf->setVectorRadius(0.001);
         vf->setEnabled(true);
     }
@@ -126,6 +157,9 @@ int main(int argc, char *argv[])
     auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", V, bdryF);
     psMesh->setTransparency(0.2);
     psMesh->setSurfaceColor({ 0.5,0.5,0.0 });
+
+    auto* seammesh = polyscope::registerSurfaceMesh("Seam", seamV, seamF);
+    seammesh->setSurfaceColor({ 0.0, 0.0, 0.0 });
 
     // visualize!
     polyscope::show();
