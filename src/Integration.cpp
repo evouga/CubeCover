@@ -10,6 +10,34 @@
 
 namespace CubeCover {
 
+    static Eigen::Vector3d faceNormal(const Eigen::MatrixXd& V, const TetMeshConnectivity& mesh, int face)
+    {
+        Eigen::Vector3d p0 = V.row(mesh.faceVertex(face, 0)).transpose();
+        Eigen::Vector3d p1 = V.row(mesh.faceVertex(face, 1)).transpose();
+        Eigen::Vector3d p2 = V.row(mesh.faceVertex(face, 2)).transpose();
+        Eigen::Vector3d n = (p1 - p0).cross(p2 - p0);
+        n /= n.norm();
+        return n;
+    }
+
+    static int closestFrameVec(const Eigen::Vector3d& dir, const Eigen::MatrixXd& frame)
+    {
+        int nvecs = frame.rows();
+        int bestrow = -1;
+        double bestdot = -std::numeric_limits<double>::infinity();
+        for (int i = 0; i < nvecs; i++)
+        {
+            Eigen::Vector3d framevec = frame.row(i).transpose();
+            double dot = std::fabs(dir.dot(framevec) / framevec.norm());
+            if (dot > bestdot)
+            {
+                bestrow = i;
+                bestdot = dot;
+            }
+        }
+        return bestrow;
+    }
+
     class UnionFind {
     public:
         UnionFind(int nelements)
@@ -67,12 +95,7 @@ namespace CubeCover {
         {
             std::cerr << "Integer-grid parameterization not yet supported" << std::endl;
             return false;
-        }
-        if (forceBoundaryAlignment)
-        {
-            std::cerr << "Boundary alignment not yet supported" << std::endl;
-            return false;
-        }
+        }        
 
         if (verbose)
         {
@@ -105,13 +128,14 @@ namespace CubeCover {
 
         // three parameter values per soup vertex
         int soupdofs = 4 * ntets * vpf;
-        UnionFind uf(soupdofs);
-
+        
         // merge together equivalent DOFs
         int nfaces = mesh.nFaces();
+        UnionFind uf(soupdofs);
+
         for (int i = 0; i < mesh.nFaces(); i++)
         {
-            if (mesh.isBoundaryFace(i))
+            if (mesh.isBoundaryFace(i) || cutfaceset.count(i))
                 continue;
 
             int fromtet = mesh.faceTet(i, 0);
@@ -130,12 +154,47 @@ namespace CubeCover {
                 {
                     int destindex = o.targetVector(k);
                     int destsign = o.targetSign(k);
-                    if (!cutfaceset.count(i))
-                    {
-                        uf.unionTogether(fromidx[j] + k, toidx[j] + destindex, destsign);
-                    }                    
+                    uf.unionTogether(fromidx[j] + k, toidx[j] + destindex, destsign);                    
                 }
             }            
+        }
+
+        // boundary faces must lie on the same integer plane if alignment is on
+        if (forceBoundaryAlignment)
+        {
+            for (int i = 0; i < mesh.nFaces(); i++)
+            {
+                if (mesh.isBoundaryFace(i))
+                {
+                    int tet = mesh.faceTet(i, 0);
+                    if (tet == -1)
+                        tet = mesh.faceTet(i, 1);
+                    assert(tet != -1);
+
+                    Eigen::MatrixXd bdryframe = field.tetFrame(tet);
+                    Eigen::Vector3d normal = faceNormal(V, mesh, i);
+                    int alignedvec = closestFrameVec(normal, bdryframe);
+                    assert(alignedvec != -1);
+                    std::set<int> faceverts;
+                    for (int j = 0; j < 3; j++)
+                    {
+                        faceverts.insert(mesh.faceVertex(i, j));
+                    }
+                    std::vector<int> tofuse;
+                    for (int j = 0; j < 4; j++)
+                    {
+                        if (faceverts.count(mesh.tetVertex(tet, j)))
+                        {
+                            int soupidx = 4 * vpf * tet + vpf * j + alignedvec;
+                            tofuse.push_back(soupidx);
+                        }
+                    }
+                    for (int j = 1; j < tofuse.size(); j++)
+                    {
+                        uf.unionTogether(tofuse[0], tofuse[j], 1);
+                    }
+                }
+            }
         }
 
         std::map<int, int> labelmap;
@@ -157,57 +216,115 @@ namespace CubeCover {
 
 
         if(verbose)
-            std::cout << "MIP problem has " << reduceddofs + jumpdofs << " total variables and " << jumpdofs << " integer variables" << std::endl;
+            std::cout << "MIP problem has " << reduceddofs << " parameter variables and " << jumpdofs << " transition jumps" << std::endl;
+
+
+        std::set<int> integerreduceddofs;
 
         int nconstraints = 0;
         int intdofidx = 0;
         std::vector<Eigen::Triplet<double> > Ccoeffs;
         for (int i = 0; i < mesh.nFaces(); i++)
-        {
-            if (mesh.isBoundaryFace(i))
-                continue;
+        {            
+            if (mesh.isBoundaryFace(i) && forceBoundaryAlignment)
+            {                
+                int tet = mesh.faceTet(i, 0);
+                if (tet == -1)
+                    tet = mesh.faceTet(i, 1);
+                assert(tet != -1);
 
-            int fromtet = mesh.faceTet(i, 0);
-            int totet = mesh.faceTet(i, 1);
-            AssignmentGroup o = field.faceAssignment(i);
-            int fromidx[3];
-            int toidx[3];
-            for (int j = 0; j < 3; j++)
-            {
-                fromidx[j] = vpf * 4 * fromtet + vpf * mesh.faceTetVertexIndex(i, 0, j);
-                toidx[j] = vpf * 4 * totet + vpf * mesh.faceTetVertexIndex(i, 1, j);
-            }
-            for (int j = 0; j < 3; j++)
-            {
-                for (int k = 0; k < vpf; k++)
+                Eigen::MatrixXd bdryframe = field.tetFrame(tet);
+                Eigen::Vector3d normal = faceNormal(V, mesh, i);
+                int alignedvec = closestFrameVec(normal, bdryframe);
+                assert(alignedvec != -1);
+                std::set<int> faceverts;
+                for (int j = 0; j < 3; j++)
                 {
-                    int destindex = o.targetVector(k);
-                    int destsign = o.targetSign(k);
-                    if (cutfaceset.count(i))
+                    faceverts.insert(mesh.faceVertex(i, j));
+                }
+                for (int j = 0; j < 4; j++)
+                {
+                    if (faceverts.count(mesh.tetVertex(tet, j)))
                     {
-                        int froml, froms;
-                        uf.find(fromidx[j] + k, froml, froms);
-                        Ccoeffs.push_back({ nconstraints, labelmap[froml], double(froms) });
-                        int tol, tos;
-                        uf.find(toidx[j] + destindex, tol, tos);                        
-                        Ccoeffs.push_back({ nconstraints, labelmap[tol], double(-tos * destsign) });
-                        Ccoeffs.push_back({ nconstraints, reduceddofs + intdofidx + k, 1.0 });
-                        nconstraints++;
+                        int soupidx = 4 * vpf * tet + vpf * j + alignedvec;
+                        int l, s;
+                        uf.find(soupidx, l, s);
+                        integerreduceddofs.insert(labelmap[l]);
                     }
-                    
                 }
             }
-            if (cutfaceset.count(i))
+            if(cutfaceset.count(i))
+            {
+                int fromtet = mesh.faceTet(i, 0);
+                int totet = mesh.faceTet(i, 1);
+                AssignmentGroup o = field.faceAssignment(i);
+                int fromidx[3];
+                int toidx[3];
+                for (int j = 0; j < 3; j++)
+                {
+                    fromidx[j] = vpf * 4 * fromtet + vpf * mesh.faceTetVertexIndex(i, 0, j);
+                    toidx[j] = vpf * 4 * totet + vpf * mesh.faceTetVertexIndex(i, 1, j);
+                }
+                for (int j = 0; j < 3; j++)
+                {
+                    for (int k = 0; k < vpf; k++)
+                    {
+                        int destindex = o.targetVector(k);
+                        int destsign = o.targetSign(k);
+                        int froml, froms;
+                        uf.find(fromidx[j] + k, froml, froms);                        
+                        int tol, tos;
+                        uf.find(toidx[j] + destindex, tol, tos);                        
+                        if (froml != tol)
+                        {
+                            Ccoeffs.push_back({ nconstraints, labelmap[froml], double(froms) });
+                            Ccoeffs.push_back({ nconstraints, labelmap[tol], double(-tos * destsign) });
+                        }
+                        Ccoeffs.push_back({ nconstraints, reduceddofs + intdofidx + k, 1.0 });
+                        nconstraints++;                        
+                    }
+                }
                 intdofidx += vpf;
+            }
         }
+
+        if (verbose)
+        {
+            std::cout << integerreduceddofs.size() << " parameter DOFs are integer" << std::endl;
+        }
+
         // pin one corner
+        int maxintcoords = -1;
+        int pindof = 0;
+        for (int i = 0; i < ntets; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                int intcoords = 0;
+                for (int k = 0; k < vpf; k++)
+                {
+                    int l, s;
+                    uf.find(vpf * 4 * i + vpf * j + k, l, s);
+                    if (integerreduceddofs.count(labelmap[l]))
+                        intcoords++;
+                }
+                if (intcoords > maxintcoords)
+                {
+                    maxintcoords = intcoords;
+                    pindof = 4 * vpf * i + vpf * j;
+                }
+            }
+        }
         for (int i = 0; i < vpf; i++)
         {
             int l, s;
-            uf.find(i, l, s);
+            uf.find(pindof + i, l, s);
             Ccoeffs.push_back({ nconstraints, labelmap[l], 1.0 });
             nconstraints++;
         }
+        if (verbose)
+            std::cout << "Pinning DOFs " << pindof << " through " << pindof + vpf << " to the origin (" << maxintcoords << " integer dimensions)" << std::endl;
+
         if(verbose)
             std::cout << "Enforcing " << nconstraints << " constraints" << std::endl;
         assert(intdofidx == jumpdofs);
@@ -284,12 +401,15 @@ namespace CubeCover {
         std::vector<int> intdofs;
         
         if (type == CubeCoverOptions::ParameterizationType::PT_SEAMLESS)
-        {
-            intdofs.resize(jumpdofs);
+        {            
             for (int i = 0; i < jumpdofs; i++)
             {
-                intdofs[i] = reduceddofs + i;
+                intdofs.push_back(reduceddofs + i);
             }
+        }
+        for (auto it : integerreduceddofs)
+        {
+            intdofs.push_back(it);
         }
 
         if (!GurobiMIPWrapper(C, MIPA, result, MIPrhs, intdofs, 1e-6, verbose))
@@ -315,6 +435,11 @@ namespace CubeCover {
                 std::cout << "Problem residual: " << (MIPA * result - MIPrhs).norm() << std::endl;
             }
 
+            Eigen::VectorXd augresult(result.size() + 1);
+            augresult.segment(0, result.size()) = result;
+            augresult[result.size()] = 1;
+            std::cout << "C: " << (C * augresult).norm() << std::endl;           
+
             soupValues.resize(4 * ntets, vpf);
             for (int i = 0; i < ntets; i++)
             {
@@ -324,9 +449,9 @@ namespace CubeCover {
                     {
                         int label, sign;
                         uf.find(vpf * 4 * i + vpf * j + k, label, sign);
-                        soupValues(4 * i + j, k) = result[labelmap[label]] * sign;
+                        soupValues(4 * i + j, k) = result[labelmap[label]] * sign;                        
                     }
-                }
+                }                   
             }
         }
         return true;

@@ -41,19 +41,6 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
             }
         }
 
-        bool ok = true;
-        for (int j = 0; j < 3; j++)
-        {
-            if (minvals[j] == maxvals[j])
-            {
-                std::cerr << "warning: ignoring degenerate tetrahedron " << i << std::endl;
-                ok = false;
-                break;
-            }
-        }
-        if (!ok)
-            continue;
-
         int tosamplelower[3];
         int tosampleupper[3];
 
@@ -65,7 +52,7 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
 
         // add segments for each direction
         for (int dir = 0; dir < 3; dir++)
-        {
+        {            
             int sample1 = (dir + 1) % 3;
             int sample2 = (dir + 2) % 3;
             for (int val1 = tosamplelower[sample1]; val1 <= tosampleupper[sample1]; val1++)
@@ -157,7 +144,7 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
 
                                 Eigen::Vector2d rhs(double(val1) - s11val, double(val2) - s21val);
                                 Eigen::Vector2d barys = M.inverse() * rhs;
-                                if (barys[0] > 0 && barys[1] > 0 && barys[0] + barys[1] < 1.0)
+                                if (barys[0] >= 0 && barys[1] >= 0 && barys[0] + barys[1] <= 1.0)
                                 {
                                     Eigen::Vector4d pt(0, 0, 0, 0);
                                     pt[vert1] = 1.0 - barys[0] - barys[1];
@@ -187,22 +174,25 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
 
                     if (tokeep.size() > 2)
                     {
-                        std::cerr << "warning: ignoring bad tetrahedron " << i << std::endl;
+                        std::cerr << "warning: bad tetrahedron " << i << std::endl;
                     }
-                    else if (tokeep.size() == 2)
+                    for (int pt1 = 0; pt1 < tokeep.size(); pt1++)
                     {
-                        Eigen::Vector3d ambpt[2];
-                        ambpt[0].setZero();
-                        ambpt[1].setZero();
-                        for (int j = 0; j < 4; j++)
+                        for (int pt2 = pt1 + 1; pt2 < tokeep.size(); pt2++)
                         {
-                            ambpt[0] += pts[tokeep[0]][j] * V.row(mesh.tetVertex(i, j));
-                            ambpt[1] += pts[tokeep[1]][j] * V.row(mesh.tetVertex(i, j));
+                            Eigen::Vector3d ambpt[2];
+                            ambpt[0].setZero();
+                            ambpt[1].setZero();
+                            for (int j = 0; j < 4; j++)
+                            {
+                                ambpt[0] += pts[tokeep[pt1]][j] * V.row(mesh.tetVertex(i, j));
+                                ambpt[1] += pts[tokeep[pt2]][j] * V.row(mesh.tetVertex(i, j));
+                            }
+                            Segment s;
+                            s.end1 = ambpt[0];
+                            s.end2 = ambpt[1];
+                            segs.push_back(s);
                         }
-                        Segment s;
-                        s.end1 = ambpt[0];
-                        s.end2 = ambpt[1];
-                        segs.push_back(s);
                     }
                 }
             }
