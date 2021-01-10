@@ -91,12 +91,6 @@ namespace CubeCover {
     bool integrate(const Eigen::MatrixXd& V, const FrameField& field, Eigen::MatrixXd& soupValues, double scale, 
         double MIPtol, CubeCoverOptions::ParameterizationType type, bool forceBoundaryAlignment, bool verbose)
     {
-        if (type == CubeCoverOptions::ParameterizationType::PT_INTEGERGRID)
-        {
-            std::cerr << "Integer-grid parameterization not yet supported" << std::endl;
-            return false;
-        }        
-
         if (verbose)
         {
             std::cout << "Cutting to a simply-connected domain..." << std::endl;
@@ -287,6 +281,63 @@ namespace CubeCover {
                 intdofidx += vpf;
             }
         }
+
+        if (type == CubeCoverOptions::ParameterizationType::PT_INTEGERGRID)
+        {
+            int nsingedges = field.nSingularEdges();
+            for (int i = 0; i < nsingedges; i++)
+            {
+                int edge = field.singularEdge(i);
+                assert(!mesh.isBoundaryEdge(edge));
+                int nbtets = mesh.nEdgeTets(edge);
+                int vs[2];
+                vs[0] = mesh.edgeVertex(edge, 0);
+                vs[1] = mesh.edgeVertex(edge, 1);
+
+                // must check all neighboring tets because there might be multiple connected components of tets separated by seam faces
+
+                for (int j = 0; j < nbtets; j++)
+                {
+                    // circulate, starting from here
+                    AssignmentGroup o(vpf);
+                    for (int k = 0; k < nbtets; k++)
+                    {
+                        int nb = (j + k) % nbtets;
+                        int tet = mesh.edgeTet(edge, nb);
+                        int faceidx = mesh.edgeTetFaceIndex(edge, nb, 1);
+                        int face = mesh.tetFace(tet, faceidx);
+                        int orient = mesh.tetFaceOrientation(tet, faceidx);
+                        AssignmentGroup faceo = field.faceAssignment(face);
+
+                        if (orient == 1)
+                            faceo = faceo.inverse();
+                        o = faceo * o;
+                    }
+                    for (int k = 0; k < vpf; k++)
+                    {
+                        if (o.targetVector(k) != k || o.targetSign(k) != 1)
+                        {
+                            for (int l = 0; l < 2; l++)
+                            {
+                                int vertidx = -1;
+                                int tet = mesh.edgeTet(edge, j);
+                                for (int m = 0; m < 4; m++)
+                                {
+                                    if (mesh.tetVertex(tet, m) == vs[l])
+                                        vertidx = m;
+                                }
+                                assert(vertidx != -1);
+                                int dof = 4 * tet * vpf + vpf * vertidx + k;
+                                int label, sign;
+                                uf.find(dof, label, sign);
+                                integerreduceddofs.insert(labelmap[label]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
 
         if (verbose)
         {

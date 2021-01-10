@@ -9,7 +9,7 @@ int main(int argc, char* argv[])
 {
     if (argc != 4 && argc != 5)
     {
-        std::cerr << "Usage: seamless (.mesh file) (.fra file) [.perm file] (output file)" << std::endl;
+        std::cerr << "Usage: integergrid (.mesh file) (.fra file) [.perm file] (output file)" << std::endl;
         return -1;
     }
 
@@ -44,9 +44,9 @@ int main(int argc, char* argv[])
     }
 
     CubeCover::CubeCoverOptions opt;
-    opt.parameterizationType = CubeCover::CubeCoverOptions::ParameterizationType::PT_SEAMLESS;
+    opt.parameterizationType = CubeCover::CubeCoverOptions::ParameterizationType::PT_INTEGERGRID;
     opt.assignmentHandling = (argc == 5 ? CubeCover::CubeCoverOptions::AssignmentHandling::AH_USEPROVIDED : CubeCover::CubeCoverOptions::AssignmentHandling::AH_RECOMPUTE);    
-    opt.boundaryConditions = CubeCover::CubeCoverOptions::BoundaryConditions::BC_FREE;
+    opt.boundaryConditions = CubeCover::CubeCoverOptions::BoundaryConditions::BC_FORCEINTEGER;
     opt.verbose = true;
     Eigen::MatrixXd values;
     if (!CubeCover::cubeCover(V, T, frames, assignments, values, opt))
