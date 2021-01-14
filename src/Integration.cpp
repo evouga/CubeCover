@@ -191,6 +191,65 @@ namespace CubeCover {
             }
         }
 
+        std::set<int> singularcurvesoupdofs;
+
+        if (type == CubeCoverOptions::ParameterizationType::PT_INTEGERGRID)
+        {
+            int nsingedges = field.nSingularEdges();
+            for (int i = 0; i < nsingedges; i++)
+            {
+                int edge = field.singularEdge(i);
+                assert(!mesh.isBoundaryEdge(edge));
+                int nbtets = mesh.nEdgeTets(edge);
+                int vs[2];
+                vs[0] = mesh.edgeVertex(edge, 0);
+                vs[1] = mesh.edgeVertex(edge, 1);
+
+                // must check all neighboring tets because there might be multiple connected components of tets separated by seam faces
+
+                for (int j = 0; j < nbtets; j++)
+                {
+                    // circulate, starting from here
+                    AssignmentGroup o(vpf);
+                    for (int k = 0; k < nbtets; k++)
+                    {
+                        int nb = (j + k) % nbtets;
+                        int tet = mesh.edgeTet(edge, nb);
+                        int faceidx = mesh.edgeTetFaceIndex(edge, nb, 1);
+                        int face = mesh.tetFace(tet, faceidx);
+                        int orient = mesh.tetFaceOrientation(tet, faceidx);
+                        AssignmentGroup faceo = field.faceAssignment(face);
+
+                        if (orient == 1)
+                            faceo = faceo.inverse();
+                        o = faceo * o;
+                    }
+                    for (int k = 0; k < vpf; k++)
+                    {
+                        if (o.targetVector(k) != k || o.targetSign(k) != 1)
+                        {
+                            int dofs[2];
+                            for (int l = 0; l < 2; l++)
+                            {
+                                int vertidx = -1;
+                                int tet = mesh.edgeTet(edge, j);
+                                for (int m = 0; m < 4; m++)
+                                {
+                                    if (mesh.tetVertex(tet, m) == vs[l])
+                                        vertidx = m;
+                                }
+                                assert(vertidx != -1);
+                                dofs[l] = 4 * tet * vpf + vpf * vertidx + k;                                
+                            }
+                            uf.unionTogether(dofs[0], dofs[1], 1);
+                            singularcurvesoupdofs.insert(dofs[0]);
+                            singularcurvesoupdofs.insert(dofs[1]);
+                        }
+                    }
+                }
+            }
+        }
+
         std::map<int, int> labelmap;
         int reduceddofs = 0;
         for (int i = 0; i < soupdofs; i++)
@@ -210,11 +269,11 @@ namespace CubeCover {
 
 
         if(verbose)
-            std::cout << "MIP problem has " << reduceddofs << " parameter variables and " << jumpdofs << " transition jumps" << std::endl;
-
+            std::cout << "MIP problem has " << reduceddofs << " parameter variables and " << jumpdofs << " transition jumps" << std::endl;        
 
         std::set<int> integerreduceddofs;
 
+        
         int nconstraints = 0;
         int intdofidx = 0;
         std::vector<Eigen::Triplet<double> > Ccoeffs;
@@ -284,57 +343,11 @@ namespace CubeCover {
 
         if (type == CubeCoverOptions::ParameterizationType::PT_INTEGERGRID)
         {
-            int nsingedges = field.nSingularEdges();
-            for (int i = 0; i < nsingedges; i++)
+            for (auto it : singularcurvesoupdofs)
             {
-                int edge = field.singularEdge(i);
-                assert(!mesh.isBoundaryEdge(edge));
-                int nbtets = mesh.nEdgeTets(edge);
-                int vs[2];
-                vs[0] = mesh.edgeVertex(edge, 0);
-                vs[1] = mesh.edgeVertex(edge, 1);
-
-                // must check all neighboring tets because there might be multiple connected components of tets separated by seam faces
-
-                for (int j = 0; j < nbtets; j++)
-                {
-                    // circulate, starting from here
-                    AssignmentGroup o(vpf);
-                    for (int k = 0; k < nbtets; k++)
-                    {
-                        int nb = (j + k) % nbtets;
-                        int tet = mesh.edgeTet(edge, nb);
-                        int faceidx = mesh.edgeTetFaceIndex(edge, nb, 1);
-                        int face = mesh.tetFace(tet, faceidx);
-                        int orient = mesh.tetFaceOrientation(tet, faceidx);
-                        AssignmentGroup faceo = field.faceAssignment(face);
-
-                        if (orient == 1)
-                            faceo = faceo.inverse();
-                        o = faceo * o;
-                    }
-                    for (int k = 0; k < vpf; k++)
-                    {
-                        if (o.targetVector(k) != k || o.targetSign(k) != 1)
-                        {
-                            for (int l = 0; l < 2; l++)
-                            {
-                                int vertidx = -1;
-                                int tet = mesh.edgeTet(edge, j);
-                                for (int m = 0; m < 4; m++)
-                                {
-                                    if (mesh.tetVertex(tet, m) == vs[l])
-                                        vertidx = m;
-                                }
-                                assert(vertidx != -1);
-                                int dof = 4 * tet * vpf + vpf * vertidx + k;
-                                int label, sign;
-                                uf.find(dof, label, sign);
-                                integerreduceddofs.insert(labelmap[label]);
-                            }
-                        }
-                    }
-                }
+                int label, sign;
+                uf.find(it, label, sign);
+                integerreduceddofs.insert(labelmap[label]);
             }
         }
 
