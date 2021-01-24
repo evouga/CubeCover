@@ -77,5 +77,6 @@ namespace CubeCover {
         void setSingularEdges();
     };
 
+    FrameField* fromFramesAndAssignments(const TetMeshConnectivity& tetMesh, const Eigen::MatrixXd &frames, const Eigen::MatrixXi &assignments, bool verbose);
 };
 #endif
