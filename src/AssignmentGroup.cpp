@@ -2,6 +2,7 @@
 #include <utility>
 #include <algorithm>
 #include <iostream>
+#include <Eigen/Dense>
 
 namespace CubeCover {
 
@@ -82,6 +83,17 @@ namespace CubeCover {
             }
 
         } while (std::next_permutation(perm.begin(), perm.end()));
+    }
+
+    int AssignmentGroup::orientation() const
+    {
+        Eigen::MatrixXd P(vectorsPerFrame(),vectorsPerFrame());
+        P.setZero();
+        for (int i = 0; i < vectorsPerFrame(); i++)
+        {
+            P(targetVector(i), i) = targetSign(i);
+        }
+        return P.determinant();
     }
 
     AssignmentGroup operator*(const AssignmentGroup& second, const AssignmentGroup& first)

@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
         return -1;
 
     CubeCover::TetMeshConnectivity mesh(T);
-
+    
     CubeCover::FrameField* field = CubeCover::fromFramesAndAssignments(mesh, frames, assignments, true);
     if (!field)
         return -1;
@@ -103,12 +103,25 @@ int main(int argc, char *argv[])
 
     std::vector<int> seamfaces;
 
+    int ninverted = 0;
+    int nnontrivial = 0;
+
     for (int i = 0; i < nfaces; i++)
     {
         if (!field->faceAssignment(i).isIdentity())
         {
             seamfaces.push_back(i);
+            nnontrivial++;
         }
+
+        if (field->faceAssignment(i).orientation() == -1)
+            ninverted++;
+    }
+
+    std::cout << "Non-identity face assignments: " << nnontrivial << std::endl;
+    if (ninverted > 0)
+    {
+        std::cout << "Warning: " << ninverted << " face assignments are orientation-reversing" << std::endl;
     }
 
     int nseamtris = seamfaces.size();

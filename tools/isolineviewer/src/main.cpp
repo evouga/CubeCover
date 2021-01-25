@@ -6,6 +6,7 @@
 #include "ReadHexEx.h"
 #include "polyscope/surface_mesh.h"
 #include "ExtractIsolines.h"
+#include <Eigen/Dense>
 
 int main(int argc, char *argv[])
 {
@@ -28,7 +29,6 @@ int main(int argc, char *argv[])
     }
 
     CubeCover::TetMeshConnectivity mesh(T);
-
     
     Eigen::MatrixXd P;
     Eigen::MatrixXi E;
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     polyscope::init();
 
     auto *psCurves = polyscope::registerCurveNetwork("Isolines", P, E);
-    psCurves->setRadius(0.001);
+    psCurves->setRadius(0.003);
     auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", V, bdryF);
     psMesh->setTransparency(0.2);
     

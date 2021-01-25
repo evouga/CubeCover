@@ -29,6 +29,12 @@ namespace CubeCover {
         bool isIdentity() const;
         AssignmentGroup inverse() const;
 
+        /*
+         * Whether the assignment is orientation-preserving (+1) or reversing
+         * (-1).
+         */
+        int AssignmentGroup::orientation() const;
+
         int targetVector(int srcidx) const { return permutation[srcidx]; }
         int targetSign(int srcidx) const { return sign[srcidx]; }
 
@@ -72,6 +78,12 @@ namespace CubeCover {
      */
     AssignmentGroup localAssignment(const Eigen::MatrixXd& from, const Eigen::MatrixXd& to);
 
+
+    AssignmentGroup operator*(const AssignmentGroup& first, const AssignmentGroup& second);
+    Eigen::MatrixXd operator*(const AssignmentGroup& o, const Eigen::MatrixXd& frame);
+    std::ostream& operator<<(std::ostream& os, const AssignmentGroup& o);
+    bool parseFromPerm(const std::vector<int>& pvals, AssignmentGroup &result);
+    
 };
 
 #endif

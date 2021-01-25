@@ -188,7 +188,7 @@ namespace CubeCover {
                         return false;
                     }
                     int ref;
-                    DerivedF::Scalar v1, v2, v3;
+                    typename DerivedF::Scalar v1, v2, v3;
                     ss = std::stringstream(line);
                     ss >> v1 >> v2 >> v3 >> ref;
                     if (!ss)
@@ -259,7 +259,7 @@ namespace CubeCover {
                         return false;
                     }
                     int ref;
-                    DerivedT::Scalar v1, v2, v3, v4;
+                    typename DerivedT::Scalar v1, v2, v3, v4;
                     ss = std::stringstream(line);
                     ss >> v1 >> v2 >> v3 >> v4 >> ref;
                     if (!ss)

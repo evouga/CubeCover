@@ -263,20 +263,170 @@ namespace CubeCover {
             }
         }
 
-        // three jump variables across each face
-        int jumpdofs = vpf * cutFaces.size();
+        struct Constraint
+        {
+            Constraint(int dof1, int sign1,
+                int dof2, int sign2,
+                int intdof, int sign3)
+            {
+                // sort into canonical form
+                // dof1 < dof2 and dof1 positive
+                if (dof1 > dof2)
+                {
+                    std::swap(dof1, dof2);
+                    std::swap(sign1, sign2);
+                }
+                if (sign1 == -1)
+                {
+                    sign2 *= -1;
+                    sign3 *= -1;
+                }
+                d1 = dof1;
+                d2 = dof2;
+                intd = intdof;
+                sd2 = sign2;
+                sintd = sign3;
+            }
+            int d1, d2, intd;
+            int sd2, sintd;
+        };
 
 
+        std::vector<Constraint> constraints;
+        for (int i = 0; i < mesh.nFaces(); i++)
+        {                        
+            if(cutfaceset.count(i))
+            {
+                int fromtet = mesh.faceTet(i, 0);
+                int totet = mesh.faceTet(i, 1);
+                AssignmentGroup o = field.faceAssignment(i);
+                int fromidx[3];
+                int toidx[3];
+                for (int j = 0; j < 3; j++)
+                {
+                    fromidx[j] = vpf * 4 * fromtet + vpf * mesh.faceTetVertexIndex(i, 0, j);
+                    toidx[j] = vpf * 4 * totet + vpf * mesh.faceTetVertexIndex(i, 1, j);
+                }
+                for (int j = 0; j < 3; j++)
+                {
+                    for (int k = 0; k < vpf; k++)
+                    {
+                        int destindex = o.targetVector(k);
+                        int destsign = o.targetSign(k);
+                        int froml, froms;
+                        uf.find(fromidx[j] + k, froml, froms);                        
+                        int tol, tos;
+                        uf.find(toidx[j] + destindex, tol, tos);                        
+                        constraints.push_back({ labelmap[froml], froms, labelmap[tol], -tos * destsign, vpf * i + k, 1 });                        
+                    }
+                }
+            }
+        }
 
-        if(verbose)
-            std::cout << "MIP problem has " << reduceddofs << " parameter variables and " << jumpdofs << " transition jumps" << std::endl;        
+        UnionFind cuf(nfaces* vpf);
+        std::set<int> implicitzeros;
+
+        // group by first vertex
+        int totalconstraints = constraints.size();
+        std::map<int, std::vector<int> > constraintsbyvert;
+        std::map<int, std::map<std::pair<int, int>, int> > representatives;
+        for (int i = 0; i < totalconstraints; i++)
+        {
+            constraintsbyvert[constraints[i].d1].push_back(i);
+        }
+        for (auto& it : constraintsbyvert)
+        {
+            std::map<std::pair<int, int>, int> &representativeconstraints = representatives[it.first];
+            for (auto& it2 : it.second)
+            {
+                int d2 = constraints[it2].d2;
+                int s2 = constraints[it2].sd2;
+                auto prev = representativeconstraints.find({ d2,s2 });
+                if (prev == representativeconstraints.end())
+                {
+                    representativeconstraints[{d2, s2}] = it2;
+                }
+                else
+                {
+                    int previntd = constraints[prev->second].intd;
+                    int prevsintd = constraints[prev->second].sintd;
+                    int intd = constraints[it2].intd;
+                    int sintd = constraints[it2].sintd;
+
+                    int prevlabel, prevsign;
+                    int label, sign;
+                    cuf.find(previntd, prevlabel, prevsign);
+                    cuf.find(intd, label, sign);
+                    if (prevlabel == label && sign*sintd != prevsign*prevsintd)
+                    {
+                        implicitzeros.insert(intd);
+                    }
+                    cuf.unionTogether(intd, previntd, sintd * prevsintd);                    
+                }
+            }
+        }
+
+        std::set<int> implicitzerolabels;
+        for (auto it : implicitzeros)
+        {
+            int label, sign;
+            cuf.find(it, label, sign);
+            implicitzerolabels.insert(label);
+        }
+        int jumpdofs = 0;
+        std::map<int, int> jumplabelmap;        
+        for (auto& it : representatives)
+        {
+            for (auto& it2 : it.second)
+            {
+                int itdof = constraints[it2.second].intd;
+                int label, sign;
+                cuf.find(itdof, label, sign);
+                if (!implicitzerolabels.count(label))
+                {
+                    auto idx = jumplabelmap.find(label);
+                    if (idx == jumplabelmap.end())
+                    {
+                        jumplabelmap[label] = jumpdofs++;
+                    }
+                }
+            }
+        }
+
+        if (verbose)
+        {
+            std::cout << "MIP problem has " << reduceddofs << " parameter variables and " << jumpdofs << " transition jumps" << std::endl;
+            std::cout << "(" << implicitzerolabels.size() << " transition jumps implicitly zero)" << std::endl;
+        }
 
         std::set<int> integerreduceddofs;
 
         
         int nconstraints = 0;
-        int intdofidx = 0;
         std::vector<Eigen::Triplet<double> > Ccoeffs;
+        for (auto& it : representatives)
+        {
+            for (auto& it2 : it.second)
+            {
+                int intdof = constraints[it2.second].intd;
+                int intdsign = constraints[it2.second].sintd;
+
+                int froml = it.first;
+                int tol = it2.first.first;
+                int tos = it2.first.second;
+                
+                Ccoeffs.push_back({ nconstraints, froml, 1.0 });
+                Ccoeffs.push_back({ nconstraints, tol, double(tos) });
+                int idlabel, idsign;
+                cuf.find(intdof, idlabel, idsign);
+                if (!implicitzerolabels.count(idlabel))
+                {
+                    Ccoeffs.push_back({ nconstraints, reduceddofs + jumplabelmap[idlabel], double(idsign*intdsign) });
+                }
+                nconstraints++;
+            }
+        }
+
         for (int i = 0; i < mesh.nFaces(); i++)
         {            
             if (mesh.isBoundaryFace(i) && forceBoundaryAlignment)
@@ -305,40 +455,7 @@ namespace CubeCover {
                         integerreduceddofs.insert(labelmap[l]);
                     }
                 }
-            }
-            if(cutfaceset.count(i))
-            {
-                int fromtet = mesh.faceTet(i, 0);
-                int totet = mesh.faceTet(i, 1);
-                AssignmentGroup o = field.faceAssignment(i);
-                int fromidx[3];
-                int toidx[3];
-                for (int j = 0; j < 3; j++)
-                {
-                    fromidx[j] = vpf * 4 * fromtet + vpf * mesh.faceTetVertexIndex(i, 0, j);
-                    toidx[j] = vpf * 4 * totet + vpf * mesh.faceTetVertexIndex(i, 1, j);
-                }
-                for (int j = 0; j < 3; j++)
-                {
-                    for (int k = 0; k < vpf; k++)
-                    {
-                        int destindex = o.targetVector(k);
-                        int destsign = o.targetSign(k);
-                        int froml, froms;
-                        uf.find(fromidx[j] + k, froml, froms);                        
-                        int tol, tos;
-                        uf.find(toidx[j] + destindex, tol, tos);                        
-                        if (froml != tol)
-                        {
-                            Ccoeffs.push_back({ nconstraints, labelmap[froml], double(froms) });
-                            Ccoeffs.push_back({ nconstraints, labelmap[tol], double(-tos * destsign) });
-                        }
-                        Ccoeffs.push_back({ nconstraints, reduceddofs + intdofidx + k, 1.0 });
-                        nconstraints++;                        
-                    }
-                }
-                intdofidx += vpf;
-            }
+            }            
         }
 
         if (type == CubeCoverOptions::ParameterizationType::PT_INTEGERGRID)
@@ -391,7 +508,7 @@ namespace CubeCover {
 
         if(verbose)
             std::cout << "Enforcing " << nconstraints << " constraints" << std::endl;
-        assert(intdofidx == jumpdofs);
+        
         Eigen::SparseMatrix<double> C(nconstraints, reduceddofs + jumpdofs + 1);
         C.setFromTriplets(Ccoeffs.begin(), Ccoeffs.end());
 
