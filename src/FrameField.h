@@ -62,6 +62,13 @@ namespace CubeCover {
          */
         void computeLocalAssignments();
 
+        /*
+         * Attempts to reduce the number of nontrivial face assignments by
+         * permuting the frame field vectors. In particular, combAssignments
+         * will set all assignments to be orientation-preserving, if possible.
+         */
+        void combAssignments();
+
         const AssignmentGroup& faceAssignment(int faceid) const { return faceperms[faceid]; }
         const Eigen::MatrixXd& tetFrame(int tetid) const { return frames[tetid]; }
 

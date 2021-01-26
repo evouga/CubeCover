@@ -57,6 +57,7 @@ int main(int argc, char *argv[])
         field->computeLocalAssignments();
         std::cout << "found " << field->nSingularEdges() << " singular edges" << std::endl;
     }
+    field->combAssignments();
 
     Eigen::MatrixXd Pblack;
     Eigen::MatrixXi Eblack;

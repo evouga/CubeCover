@@ -6,6 +6,7 @@
 #include <vector>
 #include <Eigen/Sparse>
 #include <set>
+#include <deque>
 
 namespace CubeCover {
 
@@ -238,5 +239,62 @@ namespace CubeCover {
         field->setSingularEdges();
 
         return field;
+    }
+
+    void FrameField::combAssignments()
+    {
+        int ntets = mesh.nTets();
+        if (ntets == 0)
+            return;
+
+        int vpf = vectorsPerFrame();
+
+        std::vector<bool> visited(ntets);
+        struct Visit
+        {
+            int nextnode;
+            AssignmentGroup g;
+        };
+
+        AssignmentGroup identity(vpf);
+        std::deque<Visit> q;
+        q.push_back({ 0,identity });
+        visited[0] = true;
+
+        while (!q.empty())
+        {
+            Visit next = q.front();
+            q.pop_front();
+            // propagate the permutation
+
+            frames[next.nextnode] = next.g * frames[next.nextnode];
+            for (int i = 0; i < 4; i++)
+            {
+                int face = mesh.tetFace(next.nextnode, i);
+                int orient = mesh.tetFaceOrientation(next.nextnode, i);
+                int nb = mesh.faceTet(face, 1 - orient);
+                if (nb == -1)
+                    continue;
+
+                AssignmentGroup nextg(vpf);
+                
+                if (orient == 0)
+                {
+                    faceperms[face] = faceperms[face] * next.g.inverse();                    
+                    nextg = faceperms[face].inverse();
+                }
+                else
+                {
+                    faceperms[face] = next.g * faceperms[face];
+                    nextg = faceperms[face];
+                }
+
+                if (!visited[nb])
+                {
+                    q.push_back({ nb, nextg });
+                    visited[nb] = true;
+                }
+            }
+        }
     }
 };

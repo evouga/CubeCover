@@ -38,6 +38,7 @@ namespace CubeCover
             Eigen::MatrixXi identity(0, 2 + frames.rows() / mesh.nTets());
             field = fromFramesAndAssignments(mesh, frames, identity, opt.verbose);
             field->computeLocalAssignments();
+            field->combAssignments();
         }
 
         if (!field)
