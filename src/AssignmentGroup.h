@@ -33,7 +33,7 @@ namespace CubeCover {
          * Whether the assignment is orientation-preserving (+1) or reversing
          * (-1).
          */
-        int AssignmentGroup::orientation() const;
+        int orientation() const;
 
         int targetVector(int srcidx) const { return permutation[srcidx]; }
         int targetSign(int srcidx) const { return sign[srcidx]; }

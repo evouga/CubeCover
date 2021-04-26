@@ -51,6 +51,7 @@ endif()
 
 if(BUILD_ISOLINE_VIEWER)
   add_subdirectory(tools/isolineviewer)
+  add_subdirectory(tools/volumeparamviewer)
 endif()
 
 if(BUILD_BINARIES)
