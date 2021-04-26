@@ -30,6 +30,35 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+
+	// draw tet mesh
+
+	int ntets = T.rows();
+	Eigen::MatrixXd P_viztets(4 * ntets, 3);
+	Eigen::MatrixXi E_viztets(6 * ntets, 2);
+
+	for (int i = 0; i < ntets; i++)
+	{
+		int idx = 0;
+		for (int j = 0; j < 4; j++)
+		{
+			P_viztets.row(4 * i + j) = values.row(4 * i + j);
+			
+			for (int k = j + 1; k < 4; k++)
+			{
+				E_viztets(6 * i + idx, 0) = 4 * i + j;
+				E_viztets(6 * i + idx, 1) = 4 * i + k;
+				idx++;
+			}
+		}
+
+	}
+
+	//
+
+
+
+
     CubeCover::TetMeshConnectivity mesh(T);
     
     Eigen::MatrixXd P;
@@ -86,6 +115,11 @@ int main(int argc, char *argv[])
 
     // auto *psCurves = polyscope::registerCurveNetwork("Isolines", P, E);
     // psCurves->setRadius(0.003);
+	auto *psVizTets = polyscope::registerCurveNetwork("viztets", P_viztets, E_viztets);
+	psVizTets->setRadius(0.003);
+	psVizTets->setEnabled(false);
+
+
     auto *psCurves2 = polyscope::registerCurveNetwork("Bad Isolines", P2, E2);
     psCurves2->setRadius(0.003);
 

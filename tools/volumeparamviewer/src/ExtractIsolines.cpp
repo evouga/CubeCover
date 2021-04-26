@@ -23,7 +23,7 @@ void extractPoints(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectivit
     points.clear();
     colors.clear();
 
-    std::cout << V.size() << " rows: " << V.rows()  << " cols: " << V.cols() << std::endl;
+ //   std::cout << V.size() << " rows: " << V.rows()  << " cols: " << V.cols() << std::endl;
     Eigen::MatrixXd vert_vals( V.rows(), V.cols() );
 
 
@@ -142,6 +142,38 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
             tosampleupper[j] = std::floor(maxvals[j]);
         }
 
+		Eigen::Vector3d p0 = values.row(4 * i + 0);
+		Eigen::Vector3d p1 = values.row(4 * i + 1);
+		Eigen::Vector3d p2 = values.row(4 * i + 2);
+		Eigen::Vector3d p3 = values.row(4 * i + 3);
+
+		Eigen::Vector3d d1 = p1 - p0;
+		Eigen::Vector3d d2 = p2 - p0;
+		Eigen::Vector3d d3 = p3 - p0;
+
+		double vol = d1.cross(d2).dot(d3);
+		if (std::fabs(vol) < .000001)
+		{
+
+			for (int j = 0; j < 4; j++)
+			{
+				for (int k = j + 1; k < 4; k++)
+				{
+					Segment s;
+					s.end1 = V.row(mesh.tetVertex(i, j));
+					s.end2 = V.row(mesh.tetVertex(i, k));
+					segs2.push_back(s);
+				}
+			}
+		}
+
+		for (int j = 0; j < 4; j++)
+		{
+			Eigen::Vector3d p0 = values.row(4 * i + 0);
+
+			
+		}
+
         // add segments for each direction
         for (int dir = 0; dir < 3; dir++)
         {            
@@ -233,17 +265,7 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
 
                                 if (M.determinant() == 0)
                                 {
-                                    std::cout << "zero volume" <<std::endl;
-                                    Segment s;
-                                    s.end1 = V.row( mesh.tetVertex(i, vert1) );
-                                    s.end2 = V.row( mesh.tetVertex(i, vert2) );;
-                                    segs2.push_back(s);
-                                    s.end1 = V.row( mesh.tetVertex(i, vert2) );
-                                    s.end2 = V.row( mesh.tetVertex(i, vert3) );;
-                                    segs2.push_back(s);
-                                    s.end1 = V.row( mesh.tetVertex(i, vert1) );
-                                    s.end2 = V.row( mesh.tetVertex(i, vert3) );;
-                                    segs2.push_back(s);
+									std::cout << "zero volume" << std::endl;
                                     continue;
                                 }
 
