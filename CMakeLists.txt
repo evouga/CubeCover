@@ -11,6 +11,7 @@ endif()
 set(BUILD_SINGULARITY_VIEWER ON CACHE BOOL "Build Singularity Viewer")
 set(BUILD_ISOLINE_VIEWER ON CACHE BOOL "Build Isoline Viewer")
 set(BUILD_BINARIES ON CACHE BOOL "Build Command-line Binaries")
+set(BUILD_VIZ_TOOLS ON CACHE BOOL "Build Stuff for Volume Rendering")
 
 # Find Eigen
 find_package(Eigen3 3.3 REQUIRED)
@@ -18,6 +19,11 @@ find_package(Eigen3 3.3 REQUIRED)
 if(BUILD_SINGULARITY_VIEWER OR BUILD_ISOLINE_VIEWER)
   # Find Polyscope
   find_package(Polyscope REQUIRED)
+endif()
+
+if(BUILD_VIZ_TOOLS)
+  list(APPEND CMAKE_MODULE_PATH "/usr/local/lib/cmake/OpenVDB")
+  find_package(OpenVDB REQUIRED)
 endif()
 
 # use gurobi
@@ -52,6 +58,10 @@ endif()
 if(BUILD_ISOLINE_VIEWER)
   add_subdirectory(tools/isolineviewer)
   add_subdirectory(tools/volumeparamviewer)
+endif()
+
+if(BUILD_VIZ_TOOLS)
+  add_subdirectory(tools/hexextoOpenVDB)
 endif()
 
 if(BUILD_BINARIES)
