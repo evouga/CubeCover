@@ -104,7 +104,8 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
     Eigen::MatrixXd& P,
     Eigen::MatrixXi& E,
     Eigen::MatrixXd& P2,
-    Eigen::MatrixXi& E2)
+    Eigen::MatrixXi& E2,
+    std::vector<int> badverts)
 {
     constexpr double clamptol = 1e-6;
 
@@ -113,6 +114,7 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
 
     std::vector<Segment> segs;
     std::vector<Segment> segs2;
+    badverts.clear();
 
     int ntets = mesh.nTets();
     for (int i = 0; i < ntets; i++)
@@ -154,9 +156,11 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
 		double vol = d1.cross(d2).dot(d3);
 		if (std::fabs(vol) < .000001)
 		{
-
+            badverts.push_back(i);
+            std::cout << i << " " << std::endl;
 			for (int j = 0; j < 4; j++)
 			{
+                // badverts.push_back(mesh.tetVertex(i,j));
 				for (int k = j + 1; k < 4; k++)
 				{
 					Segment s;
@@ -325,6 +329,8 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
             }
         }
     }
+
+    std::cout << "BAD VERTS SIZE " << badverts.size() <<std::endl;
 
     int nsegs = segs.size();
     P.resize(2 * nsegs, 3);

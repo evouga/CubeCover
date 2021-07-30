@@ -5,6 +5,9 @@
 #include <iostream>
 #include <Eigen/Dense>
 
+#include "polyscope/point_cloud.h"
+
+
 struct Segment
 {
     Eigen::Vector3d end1;
@@ -13,7 +16,9 @@ struct Segment
 
 void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectivity& mesh, const Eigen::MatrixXd& values,
     Eigen::MatrixXd& P,
-    Eigen::MatrixXi& E)
+    Eigen::MatrixXi& E,
+    Eigen::MatrixXd& P2,
+    Eigen::MatrixXi& E2)
 {
     constexpr double clamptol = 1e-6;
 
@@ -21,6 +26,7 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
     assert(values.cols() == 3);
 
     std::vector<Segment> segs;
+    std::vector<Segment> segs2;
 
     int ntets = mesh.nTets();
     for (int i = 0; i < ntets; i++)
@@ -140,7 +146,20 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
                                     s22val - s21val, s23val - s21val;
 
                                 if (M.determinant() == 0)
+                                {
+                                    std::cout << "zero volume" <<std::endl;
+                                    Segment s;
+                                    s.end1 = V.row( mesh.tetVertex(i, vert1) );
+                                    s.end2 = V.row( mesh.tetVertex(i, vert2) );;
+                                    segs2.push_back(s);
+                                    s.end1 = V.row( mesh.tetVertex(i, vert2) );
+                                    s.end2 = V.row( mesh.tetVertex(i, vert3) );;
+                                    segs2.push_back(s);
+                                    s.end1 = V.row( mesh.tetVertex(i, vert1) );
+                                    s.end2 = V.row( mesh.tetVertex(i, vert3) );;
+                                    segs2.push_back(s);
                                     continue;
+                                }
 
                                 Eigen::Vector2d rhs(double(val1) - s11val, double(val2) - s21val);
                                 Eigen::Vector2d barys = M.inverse() * rhs;
@@ -209,4 +228,16 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
         E(i, 0) = 2 * i;
         E(i, 1) = 2 * i + 1;
     }
+
+    int nsegs2 = segs2.size();
+    P2.resize(2 * nsegs2, 3);
+    E2.resize(nsegs2, 2);
+    for (int i = 0; i < nsegs2; i++)
+    {
+        P2.row(2 * i) = segs2[i].end1;
+        P2.row(2 * i + 1) = segs2[i].end2;
+        E2(i, 0) = 2 * i;
+        E2(i, 1) = 2 * i + 1;
+    }
+
 }

@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 #include "ReadFrameField.h"
 #include <iostream>
+#include <fstream>
 #include "FrameField.h"
 #include "TetMeshConnectivity.h"
 #include "SingularCurveNetwork.h"
@@ -15,9 +16,9 @@
 
 int main(int argc, char *argv[])
 {
-    if (argc != 3 && argc != 4)
+    if (argc != 3 && argc != 4 && argc != 5)
     {
-        std::cerr << "Usage: singularityviewer (.mesh file) (.fra file) [.perm file]" << std::endl;
+        std::cerr << "Usage: singularityviewer (.mesh file) (.fra file) [bad_verts path] [.perm file]" << std::endl;
         return -1;
     }
 
@@ -30,10 +31,23 @@ int main(int argc, char *argv[])
 
     bool recomputeperms = false;
 
-    if (argc == 4)
-        permfile = argv[3];
+    if (argc == 5)
+        permfile = argv[4];
     else
         recomputeperms = true;
+
+    bool showViz = true;
+    std::string badverts;
+
+    if (argc >= 4)
+    {
+        badverts = argv[3];
+        if (badverts != "1")
+            showViz = false;
+    }
+
+    std::cout << badverts << std::endl;
+
 
     Eigen::MatrixXi F;
     if (!CubeCover::readMESH(meshfile, V, T, F))
@@ -142,41 +156,61 @@ int main(int argc, char *argv[])
     std::mt19937 rng(dev());
     std::uniform_real_distribution<double> dist(0.0, 1.0);
 
-    polyscope::init();
-
-    auto *tetc = polyscope::registerPointCloud("Centroids", centroids);
-    glm::vec3 dotcolor(0.1, 0.1, 0.1);
-    tetc->setPointColor(dotcolor);
-    tetc->setPointRadius(0.001);
-    int vpf = framefieldvecs.size();
-    for (int i = 0; i < vpf; i++)
+    if (showViz)
     {
-        std::stringstream ss;
-        ss << "Frame Vector " << i;
-        auto *vf = tetc->addVectorQuantity(ss.str(), framefieldvecs[i]);
-        vf->setVectorColor({ dist(rng),dist(rng),dist(rng) });
-        vf->setVectorRadius(0.001);
-        vf->setEnabled(true);
+        polyscope::init();
+
+        auto *tetc = polyscope::registerPointCloud("Centroids", centroids);
+        glm::vec3 dotcolor(0.1, 0.1, 0.1);
+        tetc->setPointColor(dotcolor);
+        tetc->setPointRadius(0.001);
+        int vpf = framefieldvecs.size();
+        for (int i = 0; i < vpf; i++)
+        {
+            std::stringstream ss;
+            ss << "Frame Vector " << i;
+            auto *vf = tetc->addVectorQuantity(ss.str(), framefieldvecs[i]);
+            vf->setVectorColor({ dist(rng),dist(rng),dist(rng) });
+            vf->setVectorRadius(0.001);
+            vf->setEnabled(true);
+        }
+
+        auto *green = polyscope::registerCurveNetwork("Singular Curves (+1/4)", Pgreen, Egreen);
+        green->setColor({ 0.0,1.0,0.0 });
+
+        auto *blue = polyscope::registerCurveNetwork("Singular Curves (-1/4)", Pblue, Eblue);
+        blue->setColor({ 0.0,0.0,1.0 });
+
+        auto *black = polyscope::registerCurveNetwork("Singular Curves (irregular)", Pblack, Eblack);
+        black->setColor({ 0.0,0.0,0.0 });
+
+        auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", V, bdryF);
+        psMesh->setTransparency(0.2);
+        psMesh->setSurfaceColor({ 0.5,0.5,0.0 });
+
+        auto* seammesh = polyscope::registerSurfaceMesh("Seam", seamV, seamF);
+        seammesh->setSurfaceColor({ 0.0, 0.0, 0.0 });
+
+        // visualize!
+        polyscope::show();
     }
-
-    auto *green = polyscope::registerCurveNetwork("Singular Curves (+1/4)", Pgreen, Egreen);
-    green->setColor({ 0.0,1.0,0.0 });
-
-    auto *blue = polyscope::registerCurveNetwork("Singular Curves (-1/4)", Pblue, Eblue);
-    blue->setColor({ 0.0,0.0,1.0 });
-
-    auto *black = polyscope::registerCurveNetwork("Singular Curves (irregular)", Pblack, Eblack);
-    black->setColor({ 0.0,0.0,0.0 });
-
-    auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", V, bdryF);
-    psMesh->setTransparency(0.2);
-    psMesh->setSurfaceColor({ 0.5,0.5,0.0 });
-
-    auto* seammesh = polyscope::registerSurfaceMesh("Seam", seamV, seamF);
-    seammesh->setSurfaceColor({ 0.0, 0.0, 0.0 });
-
-    // visualize!
-    polyscope::show();
+    else{
+            std::ofstream ofs(badverts);
+            if (!ofs)
+            {
+                return false;
+            }
+            int nsing = field->nSingularEdges();
+            ofs << "ids " << V.rows() << " " << 2 * nsing << std::endl;
+            for (int i = 0; i < nsing; i++)
+            {
+                int edge = field->singularEdge(i);
+                int v0 = mesh.edgeVertex(edge, 0);
+                int v1 = mesh.edgeVertex(edge, 1);
+                ofs << v0 << std::endl << v1 << std::endl;
+            }
+        
+    }
 
     delete field;
 }

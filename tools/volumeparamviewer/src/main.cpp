@@ -2,6 +2,7 @@
 #include "polyscope/curve_network.h"
 #include <Eigen/Core>
 #include <iostream>
+#include <fstream>
 #include "TetMeshConnectivity.h"
 #include "ReadHexEx.h"
 #include "polyscope/surface_mesh.h"
@@ -12,9 +13,9 @@
 
 int main(int argc, char *argv[])
 {
-    if (argc != 2)
+    if (argc > 3 || argc < 2 )
     {
-        std::cerr << "Usage: isolineviewer (.hexex file)" << std::endl;
+        std::cerr << "Usage: volumeparamviewer (.hexex file) [bad_verts path]" << std::endl;
         return -1;
     }
 
@@ -55,7 +56,17 @@ int main(int argc, char *argv[])
 	}
 
 	//
+    bool showViz = true;
+    std::string badverts;
 
+    if (argc >= 3)
+    {
+        badverts = argv[2];
+        if (badverts != "1")
+            showViz = false;
+    }
+
+    std::cout << badverts << std::endl;
 
 
 
@@ -71,9 +82,12 @@ int main(int argc, char *argv[])
     std::vector<std::array<double, 3>> colors;
 
     std::vector<glm::vec3> tet_centers;
+    std::vector<int> badvert_ids;
 
 
-    extractIsolines(V, mesh, values, P, E, P2, E2);
+    extractIsolines(V, mesh, values, P, E, P2, E2, badvert_ids);
+        std::cout << "BAD VERTS SIZE " << badvert_ids.size() <<std::endl;
+
     extractPoints(V, mesh, values, points, colors);
 
 
@@ -110,33 +124,58 @@ int main(int argc, char *argv[])
         }
     }
 
-    polyscope::init();
+    if (showViz)
+    {
+
+        polyscope::init();
 
 
-    // auto *psCurves = polyscope::registerCurveNetwork("Isolines", P, E);
-    // psCurves->setRadius(0.003);
-	auto *psVizTets = polyscope::registerCurveNetwork("viztets", P_viztets, E_viztets);
-	psVizTets->setRadius(0.003);
-	psVizTets->setEnabled(false);
+        // auto *psCurves = polyscope::registerCurveNetwork("Isolines", P, E);
+        // psCurves->setRadius(0.003);
+    	auto *psVizTets = polyscope::registerCurveNetwork("viztets", P_viztets, E_viztets);
+    	psVizTets->setRadius(0.003);
+    	psVizTets->setEnabled(false);
 
 
-    auto *psCurves2 = polyscope::registerCurveNetwork("Bad Isolines", P2, E2);
-    psCurves2->setRadius(0.003);
+        auto *psCurves2 = polyscope::registerCurveNetwork("Bad Isolines", P2, E2);
+        psCurves2->setRadius(0.003);
 
-    auto *psPoints = polyscope::registerPointCloud("Mesh Verts", points);
-    psPoints->setPointRadius(0.003);
-    psPoints->addColorQuantity("pos_color", colors)->setEnabled(true);
-    psPoints->setEnabled(false);
+        auto *psPoints = polyscope::registerPointCloud("Mesh Verts", points);
+        psPoints->setPointRadius(0.003);
+        psPoints->addColorQuantity("pos_color", colors)->setEnabled(true);
+        psPoints->setEnabled(false);
 
-    auto *psPoints2 = polyscope::registerPointCloud("Mesh Interior", tet_centers);
-    psPoints2->setPointRadius(0.003);
-    psPoints2->addColorQuantity("pos_color", colors)->setEnabled(true);
+        auto *psPoints2 = polyscope::registerPointCloud("Mesh Interior", tet_centers);
+        psPoints2->setPointRadius(0.003);
+        psPoints2->addColorQuantity("pos_color", colors)->setEnabled(true);
 
 
-    auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", V, bdryF);
-    psMesh->setTransparency(0.2);
-    
+        auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", V, bdryF);
+        psMesh->setTransparency(0.2);
+        
 
-    // visualize!
-    polyscope::show();
+        // visualize!
+        polyscope::show();
+    }
+    else
+    {
+        std::ofstream ofs(badverts);
+        if (!ofs)
+        {
+            return false;
+        }
+        int nbadverts = badvert_ids.size();
+        // ofs << "ids " << V.rows() << " " << nbadverts << std::endl;
+        // for (int i = 0; i < nbadverts; i++)
+        // {
+        //     ofs << badvert_ids[i] << std::endl;
+        // }
+        std::cout << T.rows() << nbadverts<< std::endl;
+        ofs << "ids " << T.rows() << " " << nbadverts << std::endl;
+        for (int i = 0; i < nbadverts; i++)
+        {
+            ofs << badvert_ids[i] << std::endl;
+        }
+    }
+
 }

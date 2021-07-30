@@ -8,6 +8,9 @@
 #include "ExtractIsolines.h"
 #include <Eigen/Dense>
 
+
+#include "polyscope/point_cloud.h"
+
 int main(int argc, char *argv[])
 {
     if (argc != 2)
@@ -33,7 +36,10 @@ int main(int argc, char *argv[])
     Eigen::MatrixXd P;
     Eigen::MatrixXi E;
 
-    extractIsolines(V, mesh, values, P, E);
+    Eigen::MatrixXd P2;
+    Eigen::MatrixXi E2;
+
+    extractIsolines(V, mesh, values, P, E, P2, E2);
     
     // make a mesh out of all of the boundary faces
     int nbdry = 0;
@@ -66,10 +72,15 @@ int main(int argc, char *argv[])
 
     polyscope::init();
 
+
     auto *psCurves = polyscope::registerCurveNetwork("Isolines", P, E);
     psCurves->setRadius(0.003);
+    auto *psCurves2 = polyscope::registerCurveNetwork("Bad Isolines", P2, E2);
+    psCurves2->setRadius(0.003);
     auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", V, bdryF);
     psMesh->setTransparency(0.2);
+
+
     
 
     // visualize!
