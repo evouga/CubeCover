@@ -16,6 +16,17 @@
 
 #include <fstream>
 
+/*
+
+This file contains a basic export tool to VDB files 
+ - with some amount of scriptable configuration for controlling the final 3d texture. 
+ - exports line emmitters and fog.     
+
+
+*/
+
+
+
 int main(int argc, char *argv[])
 {
  /*   if (argc > 3 || argc < 2 )
@@ -33,6 +44,15 @@ int main(int argc, char *argv[])
         if (badverts != "1")
             showViz = false;
     }
+
+
+// Config settings.  
+    double cells = 2;
+    double cell_res = 168.;
+    double sample_res = cells * cell_res;  // target_cells * res_per_cell 
+    double line_w = .15;
+    double cosmic_background = 0.01; // this is the glow of the parameterisation.   Try setting to like .04
+
 
 
 
@@ -69,12 +89,16 @@ int main(int argc, char *argv[])
 	Eigen::MatrixXd P_viztets(4 * ntets, 3);
 	Eigen::MatrixXi E_viztets(6 * ntets, 2);
 
-    double cells = 15.;
-    double cell_res = 64.;
-    double sample_res = cells * cell_res;  // target_cells * res_per_cell 
+
+
+    // Compute tet bounding boxes 
+
+    // For tet mesh 
 
     Eigen::Vector3d minbound(BIG_NUM,BIG_NUM,BIG_NUM);
     Eigen::Vector3d maxbound(-BIG_NUM,-BIG_NUM,-BIG_NUM);
+
+    // For parameterization 
 
     Eigen::Vector3d param_min(BIG_NUM,BIG_NUM,BIG_NUM);
     Eigen::Vector3d param_max(-BIG_NUM,-BIG_NUM,-BIG_NUM);
@@ -106,25 +130,37 @@ int main(int argc, char *argv[])
 
     }
 
-    // move min to (0,0,0), rescale tet embedding to morph into sampling domain.  
+    // move min of bounding box to (0,0,0), rescale tet embedding to morph into sampling domain.  
 
     Eigen::Vector3d rangebound = maxbound - minbound;
     double scale_fac = rangebound.maxCoeff();
-    double toworld_scale = scale_fac / sample_res; 
-    double toparam_scale = sample_res / scale_fac; 
- //   Eigen::MatrixXi toparam_scale = (rangebound * ( scale_fac / sample_res)).asDiagonal();
-  //  Eigen::MatrixXi toworld_scale = (rangebound * ( sample_res / scale_fac )).asDiagonal();
+    double pixeltoparam_scale = scale_fac / sample_res; 
+    double topixel_scale = sample_res / scale_fac; 
+    // set the max bounding box dimension in the param domain = 1, and multiply by sample res.
+    // This places the parametric domain into the full sampling space
+
+    // scratch.  
+ //   Eigen::MatrixXi topixel_scale = (rangebound * ( scale_fac / sample_res)).asDiagonal();
+  //  Eigen::MatrixXi pixeltoparam_scale = (rangebound * ( sample_res / scale_fac )).asDiagonal();
 
     Eigen::Vector3d param_rangebound = param_max - param_min;
-    double param_scale_fac = param_rangebound.maxCoeff();
 
-    Eigen::MatrixXd V_param = V;
+    // Set the scale in the parameter domain so that largest dimension is 1.
+    double param_scale_fac = double(param_rangebound.maxCoeff());
+
+    // V_pixel == V_pixel_space.  I.e. it embeds the parameterization in an sample_res X sample_res X sample_res cube.  
+    Eigen::MatrixXd V_pixel = V;
     for (int i = 0; i < nverts; i++)
     {
-        Eigen::Vector3d scale_verts = V_param.row(i);
-        V_param.row(i) = (scale_verts - minbound) * toparam_scale;
+        Eigen::Vector3d scale_verts = V_pixel.row(i);
+        V_pixel.row(i) = (scale_verts - minbound) * topixel_scale;
 
-        values.row(i) = ( values.row(i) - param_min ) * (sample_res / param_scale_fac);
+
+// rescale and shift parameterization so that the parameterization domain contains the desired number of grid cells along the max dimension.
+        Eigen::Vector3d tmp = ( values.row(i)  );
+        tmp = tmp - param_min;
+        values.row(i) = tmp;
+        values.row(i) *= ( cells / param_scale_fac); 
     }
     
     openvdb::initialize();
@@ -134,12 +170,14 @@ int main(int argc, char *argv[])
     openvdb::FloatGrid::Ptr grid_strength = openvdb::FloatGrid::create();
     openvdb::FloatGrid::Ptr grid_smoke_density = openvdb::FloatGrid::create();
     openvdb::Vec3SGrid::Ptr grid_smoke_color = openvdb::Vec3SGrid::create();
+    openvdb::Vec3SGrid::Ptr grid_smoke_color2 = openvdb::Vec3SGrid::create();
     openvdb::FloatGrid::Accessor acc_r = grid_r->getAccessor();
     openvdb::FloatGrid::Accessor acc_g = grid_g->getAccessor();
     openvdb::FloatGrid::Accessor acc_b = grid_b->getAccessor();
     openvdb::FloatGrid::Accessor acc_strength = grid_strength->getAccessor();
     openvdb::FloatGrid::Accessor acc_smoke_density = grid_smoke_density->getAccessor();
     openvdb::Vec3SGrid::Accessor acc_smoke_color = grid_smoke_color->getAccessor();
+    openvdb::Vec3SGrid::Accessor acc_smoke_color2 = grid_smoke_color2->getAccessor();
 
     grid_r->setName("emission_r");
     grid_g->setName("emission_g");
@@ -147,6 +185,7 @@ int main(int argc, char *argv[])
     grid_strength->setName("emission_strength");
     grid_smoke_density->setName("smoke_density");
     grid_smoke_color->setName("smoke_color");
+    grid_smoke_color2->setName("smoke_color2");
 
     grid_r->setGridClass(openvdb::GRID_FOG_VOLUME);
     grid_g->setGridClass(openvdb::GRID_FOG_VOLUME);
@@ -154,6 +193,7 @@ int main(int argc, char *argv[])
     grid_strength->setGridClass(openvdb::GRID_FOG_VOLUME);
     grid_smoke_density->setGridClass(openvdb::GRID_FOG_VOLUME);
     grid_smoke_color->setGridClass(openvdb::GRID_FOG_VOLUME);
+    grid_smoke_color2->setGridClass(openvdb::GRID_FOG_VOLUME);
 
     openvdb::Coord ijk;
 
@@ -166,7 +206,7 @@ int main(int argc, char *argv[])
         for (int v_idx = 0; v_idx < 4; v_idx++)
         {
             int rowId = T(t, v_idx);
-            Eigen::Vector3d cur_point = V_param.row( rowId );
+            Eigen::Vector3d cur_point = V_pixel.row( rowId );
             for ( int k = 0; k < 3; k++ )
             {
                 if( cur_point(k) < curt_min(k) )
@@ -176,10 +216,12 @@ int main(int argc, char *argv[])
             }
         }
 
-        Eigen::Vector3d A = V_param.row( T(t, 0) );
-        Eigen::Vector3d B = V_param.row( T(t, 1) );
-        Eigen::Vector3d C = V_param.row( T(t, 2) );
-        Eigen::Vector3d D = V_param.row( T(t, 3) );
+
+// return vertex positions in pixel space.  
+        Eigen::Vector3d A = V_pixel.row( T(t, 0) );
+        Eigen::Vector3d B = V_pixel.row( T(t, 1) );
+        Eigen::Vector3d C = V_pixel.row( T(t, 2) );
+        Eigen::Vector3d D = V_pixel.row( T(t, 3) );
 
 
 
@@ -197,15 +239,18 @@ int main(int argc, char *argv[])
                     Eigen::Vector3d p;
                     p << float(i), float(j), float(k);
                     
-                    Eigen::VectorXd param_val;
-                    bool pIsIn = pointInsideT(A, B, C, D, p, param_val);
-            //        std::cout << "return " << param_val.transpose() << std::endl;
-             //       std::cout << param_val.transpose() << std::endl << std::endl;
+                    // Check if a voxel is in a tet ( they in same coordinate system now. )
+                    Eigen::VectorXd param_val_tet;
+                    bool pIsIn = pointInsideT(A, B, C, D, p, param_val_tet);
+
+
+
+            //        std::cout << "return " << param_val_tet.transpose() << std::endl;
+             //       std::cout << param_val_tet.transpose() << std::endl << std::endl;
                     if ( pIsIn )
                     {
                         // load tet texture values 
-                //        acc_smoke_color.setValue(ijk, openvdb::Vec3s(float( param_val(0) ), float( param_val(1) ), float( param_val(2) )) );
-                //        acc_smoke_density.setValue(ijk, float( param_val.head(3).sum() )); 
+                                        //        acc_smoke_density.setValue(ijk, float( param_val_tet.head(3).sum() )); 
                 //        acc_strength.setValue(ijk, float( .5 )); 
 
                         // param vals 
@@ -224,54 +269,79 @@ int main(int argc, char *argv[])
                         // Eigen::Vector3d orig = A;
 
                
-                        Eigen::Vector3d da = values.row(4 * i + 1) - values.row(4 * i);
-                        Eigen::Vector3d db = values.row(4 * i + 2) - values.row(4 * i);
-                        Eigen::Vector3d dc = values.row(4 * i + 3) - values.row(4 * i);
-                        Eigen::Vector3d orig = values.row(4 * i);
+                        Eigen::Vector3d da = values.row(4 * t + 1) - values.row(4 * t);
+                        Eigen::Vector3d db = values.row(4 * t + 2) - values.row(4 * t);
+                        Eigen::Vector3d dc = values.row(4 * t + 3) - values.row(4 * t);
+                        Eigen::Vector3d orig = values.row(4 * t);
 
-                        double s0 = param_val(0);
-                        double s1 = param_val(1);
-                        double s2 = param_val(2);
+                        double s0 = param_val_tet(0);
+                        double s1 = param_val_tet(1);
+                        double s2 = param_val_tet(2);
 
-                        Eigen::Vector3d interp = s0 * da + s1 * db + s2 * dc + orig;
-                        interp *= cells / sample_res;
-                      //   std::cout << "interp" << interp.transpose() << std::endl<< std::endl;
-                        interp(0) = interp(0) - floor(interp(0));
-                        interp(1) = interp(1) - floor(interp(1));
-                        interp(2) = interp(2) - floor(interp(2));
+                        Eigen::Vector3d interp_param_to_pixel = s0 * da + s1 * db + s2 * dc + orig;
+                        // interp_param_to_pixel *= cells / sample_res;
 
-                       //  std::cout << "round " << interp.transpose() << std::endl<< std::endl;
 
-                        acc_strength.setValue(ijk, float( .0 ));
-                        acc_r.setValue(ijk, interp(0) );
-                        acc_g.setValue(ijk, interp(1) );
-                        acc_b.setValue(ijk, interp(2) );
+                        // This plots the param values per tet in the underlying mesh.  
 
-                        double line_w = .05;
+                        acc_smoke_color.setValue(ijk, openvdb::Vec3s(float( param_val_tet(0) ), 
+                                                                     float( param_val_tet(1) ), 
+                                                                     float( param_val_tet(2) )) );
 
-                        if ( interp(1) < line_w && interp(2) < line_w )
+                   
+                      //   std::cout << "interp_param_to_pixel" << interp_param_to_pixel.transpose() << std::endl<< std::endl;
+
+                        // Find texture coordinate of pixel rounded to a unit cube.  
+                        double unit_u = interp_param_to_pixel(0) - floor(interp_param_to_pixel(0));
+                        double unit_v = interp_param_to_pixel(1) - floor(interp_param_to_pixel(1));
+                        double unit_w = interp_param_to_pixel(2) - floor(interp_param_to_pixel(2));
+
+                       //  std::cout << "round " << interp_param_to_pixel.transpose() << std::endl<< std::endl;
+
+
+                        // acc_strength.setValue(ijk, float( .04 ));
+                        acc_strength.setValue(ijk, float( cosmic_background ));
+                        acc_r.setValue(ijk, unit_u );
+                        acc_g.setValue(ijk, unit_v );
+                        acc_b.setValue(ijk, unit_w );
+
+                        // This plots the param values per point in parameter space 
+                        acc_smoke_color2.setValue(ijk, openvdb::Vec3s(float( unit_v ) + float( unit_w ), 
+                                                                      float( unit_w ) + float( unit_u ), 
+                                                                      float( unit_v ) + float( unit_u )) );
+
+                        
+
+                        // Draw the glowing grid.
+
+                        if ( unit_v < line_w && unit_w < line_w )
                         {
-                            acc_r.setValue(ijk, .9);
-                            acc_strength.setValue(ijk, float( interp(0) ));
+                            acc_r.setValue(ijk, .6);
+                            acc_strength.setValue(ijk, unit_u);
+                            // acc_strength.setValue(ijk, float( interp_param_to_pixel(0) ));
                         }
-                        else if ( interp(0) < line_w && interp(2) < line_w )
+                        else if ( unit_u < line_w && unit_w < line_w )
                         {
-                            acc_g.setValue(ijk, .9);
-                            acc_strength.setValue(ijk, float( interp(1)) );
+                            acc_g.setValue(ijk, .6);
+
+                            acc_strength.setValue(ijk, unit_v);
+                            // acc_strength.setValue(ijk, float( interp_param_to_pixel(1)) );
 
                         }
-                        else if ( interp(0) < line_w && interp(1) < line_w )
+                        else if ( unit_u < line_w && unit_v < line_w )
                         {
-                            acc_b.setValue(ijk, .9);
-                            acc_strength.setValue(ijk, float( interp(2)) );
+                            acc_b.setValue(ijk, .6);
+
+                            acc_strength.setValue(ijk, unit_w);
+                            // acc_strength.setValue(ijk, float( interp_param_to_pixel(2)) );
                         }
                         else{
                             acc_smoke_density.setValue(ijk, .01);
                         }
 
-                        if ( interp(0) < .1 && interp(1) < line_w && interp(2) < line_w )
+                        if ( unit_u < .1 && unit_v < line_w && unit_w < line_w )
                         {
-                            acc_strength.setValue(ijk, 3.);
+                            acc_strength.setValue(ijk, 1.);
                             acc_r.setValue(ijk, 1. );
                             acc_g.setValue(ijk, 1. );
                             acc_b.setValue(ijk, 1. );
@@ -282,25 +352,25 @@ int main(int argc, char *argv[])
                         // acc_g.setValue(ijk, .0);
                         // acc_b.setValue(ijk, .0);
 /*
-                        // if ( interp.maxCoeff() > .9)
+                        // if ( interp_param_to_pixel.maxCoeff() > .9)
                         // {
-                        //    acc_smoke_color.setValue(ijk, openvdb::Vec3s(float( interp(0) ), float( interp(1) ), float( interp(2) )) );
+                        //    acc_smoke_color.setValue(ijk, openvdb::Vec3s(float( interp_param_to_pixel(0) ), float( interp_param_to_pixel(1) ), float( interp_param_to_pixel(2) )) );
                             
-                            if ( interp(1) < .1 && interp(2) < .1 )
+                            if ( interp_param_to_pixel(1) < .1 && interp_param_to_pixel(2) < .1 )
                             {
                                 acc_r.setValue(ijk, .9);
-                                acc_strength.setValue(ijk, float( interp(0) ));
+                                acc_strength.setValue(ijk, float( interp_param_to_pixel(0) ));
                             }
-                            else if ( interp(0) < .1 && interp(2) < .1 )
+                            else if ( interp_param_to_pixel(0) < .1 && interp_param_to_pixel(2) < .1 )
                             {
                                 acc_g.setValue(ijk, .9);
-                                acc_strength.setValue(ijk, float( interp(1)) );
+                                acc_strength.setValue(ijk, float( interp_param_to_pixel(1)) );
 
                             }
-                            else if ( interp(0) < .1 && interp(1) < .1 )
+                            else if ( interp_param_to_pixel(0) < .1 && interp_param_to_pixel(1) < .1 )
                             {
                                 acc_b.setValue(ijk, .9);
-                                acc_strength.setValue(ijk, float( interp(2)) );
+                                acc_strength.setValue(ijk, float( interp_param_to_pixel(2)) );
                             }
                         // }
 */
@@ -316,7 +386,7 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < nverts; i++)
     {
-        Eigen::Vector3d round = V_param.row(i);
+        Eigen::Vector3d round = V_pixel.row(i);
         openvdb::Coord ijk;
         ijk[0] = int( round(0) );
         ijk[1] = int( round(1) );
@@ -490,8 +560,8 @@ int main(int argc, char *argv[])
         // switch sign so it's positive
         if ( sgn.determinant() < 0. )
         {
-            Eigen::Vector3d A = V_param.row(T[1]);
-            Eigen::Vector3d B = V_param.row(T[0]);
+            Eigen::Vector3d A = V_pixel.row(T[1]);
+            Eigen::Vector3d B = V_pixel.row(T[0]);
         }
 
 

@@ -21,6 +21,14 @@ bool pointInsideT(const Eigen::Vector3d& A,
     Maff.block<1,3>(1,0) = C - A;
     Maff.block<1,3>(2,0) = D - A;
     Maff.block<1,3>(3,0) =     A;
+
+
+// Double check how the other code does this.
+    // Maff.block<1,3>(1,0) = B - A;
+    // Maff.block<1,3>(2,0) = C - A;
+    // Maff.block<1,3>(3,0) = D - A;
+    // Maff.block<1,3>(0,0) =     A;
+
     Maff(3,3) = 1;
 
   //  std::cout << Maff << std::endl << std::endl;
