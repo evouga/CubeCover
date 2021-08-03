@@ -47,11 +47,12 @@ int main(int argc, char *argv[])
 
 
 // Config settings.  
-    double cells = 1;
-    double cell_res = 168.;
+    double cells = 12;
+    double cell_res = 64.;
     double sample_res = cells * cell_res;  // target_cells * res_per_cell 
-    double line_w = .15;
-    double cosmic_background = 0.01; // this is the glow of the parameterisation.   Try setting to like .04
+    double line_w = .05;
+    double border_w = .2; // 
+    double cosmic_background = 0.0000; // this is the glow of the parameterisation.   Try setting to like .04
 
 
 
@@ -160,20 +161,30 @@ int main(int argc, char *argv[])
         Eigen::Vector3d tmp = ( values.row(i)  );
         tmp = tmp - param_min;
         values.row(i) = tmp;
-        values.row(i) *= ( cells / param_scale_fac); 
+        values.row(i) *= ( ( cells )  / param_scale_fac); 
     }
     
     openvdb::initialize();
     openvdb::FloatGrid::Ptr grid_r = openvdb::FloatGrid::create();
     openvdb::FloatGrid::Ptr grid_g = openvdb::FloatGrid::create();
     openvdb::FloatGrid::Ptr grid_b = openvdb::FloatGrid::create();
-    openvdb::FloatGrid::Ptr grid_strength = openvdb::FloatGrid::create();
-    openvdb::FloatGrid::Ptr grid_smoke_density = openvdb::FloatGrid::create();
-    openvdb::Vec3SGrid::Ptr grid_smoke_color = openvdb::Vec3SGrid::create();
-    openvdb::Vec3SGrid::Ptr grid_smoke_color2 = openvdb::Vec3SGrid::create();
     openvdb::FloatGrid::Accessor acc_r = grid_r->getAccessor();
     openvdb::FloatGrid::Accessor acc_g = grid_g->getAccessor();
     openvdb::FloatGrid::Accessor acc_b = grid_b->getAccessor();
+
+
+    openvdb::FloatGrid::Ptr grid_smoke_r = openvdb::FloatGrid::create();
+    openvdb::FloatGrid::Ptr grid_smoke_g = openvdb::FloatGrid::create();
+    openvdb::FloatGrid::Ptr grid_smoke_b = openvdb::FloatGrid::create();
+    openvdb::FloatGrid::Accessor acc_smoke_r = grid_smoke_r->getAccessor();
+    openvdb::FloatGrid::Accessor acc_smoke_g = grid_smoke_g->getAccessor();
+    openvdb::FloatGrid::Accessor acc_smoke_b = grid_smoke_b->getAccessor();
+
+
+    openvdb::FloatGrid::Ptr grid_strength = openvdb::FloatGrid::create();
+    openvdb::FloatGrid::Ptr grid_smoke_density = openvdb::FloatGrid::create();
+    openvdb::Vec3SGrid::Ptr grid_smoke_color = openvdb::Vec3SGrid::create();
+    openvdb::Vec3SGrid::Ptr grid_smoke_color2 = openvdb::Vec3SGrid::create();    
     openvdb::FloatGrid::Accessor acc_strength = grid_strength->getAccessor();
     openvdb::FloatGrid::Accessor acc_smoke_density = grid_smoke_density->getAccessor();
     openvdb::Vec3SGrid::Accessor acc_smoke_color = grid_smoke_color->getAccessor();
@@ -182,6 +193,10 @@ int main(int argc, char *argv[])
     grid_r->setName("emission_r");
     grid_g->setName("emission_g");
     grid_b->setName("emission_b");
+    grid_smoke_r->setName("smoke_r");
+    grid_smoke_g->setName("smoke_g");
+    grid_smoke_b->setName("smoke_b");
+
     grid_strength->setName("emission_strength");
     grid_smoke_density->setName("smoke_density");
     grid_smoke_color->setName("smoke_color");
@@ -190,6 +205,9 @@ int main(int argc, char *argv[])
     grid_r->setGridClass(openvdb::GRID_FOG_VOLUME);
     grid_g->setGridClass(openvdb::GRID_FOG_VOLUME);
     grid_b->setGridClass(openvdb::GRID_FOG_VOLUME);
+    grid_smoke_r->setGridClass(openvdb::GRID_FOG_VOLUME);
+    grid_smoke_g->setGridClass(openvdb::GRID_FOG_VOLUME);
+    grid_smoke_b->setGridClass(openvdb::GRID_FOG_VOLUME);
     grid_strength->setGridClass(openvdb::GRID_FOG_VOLUME);
     grid_smoke_density->setGridClass(openvdb::GRID_FOG_VOLUME);
     grid_smoke_color->setGridClass(openvdb::GRID_FOG_VOLUME);
@@ -300,46 +318,151 @@ int main(int argc, char *argv[])
 
 
                         // acc_strength.setValue(ijk, float( .04 ));
-                        acc_strength.setValue(ijk, float( cosmic_background ));
-                        acc_r.setValue(ijk, unit_u );
-                        acc_g.setValue(ijk, unit_v );
-                        acc_b.setValue(ijk, unit_w );
+                        // acc_strength.setValue(ijk, float( cosmic_background ));
+                        // acc_r.setValue(ijk, unit_u );
+                        // acc_g.setValue(ijk, unit_v );
+                        // acc_b.setValue(ijk, unit_w );
 
                         // This plots the param values per point in parameter space 
                         acc_smoke_color2.setValue(ijk, openvdb::Vec3s(float( unit_v ) + float( unit_w ), 
                                                                       float( unit_w ) + float( unit_u ), 
                                                                       float( unit_v ) + float( unit_u )) );
 
+                        // acc_smoke_r.setValue(ijk, unit_v + unit_w );
+                        // acc_smoke_g.setValue(ijk, unit_u + unit_w  );
+                        // acc_smoke_b.setValue(ijk, unit_u + unit_v  );
+                        acc_smoke_r.setValue(ijk, 0.5 );
+                        acc_smoke_g.setValue(ijk, 0.5  );
+                        acc_smoke_b.setValue(ijk, 0.5  );
+                        acc_smoke_density.setValue(ijk, 0. );
+
                         
 
                         // Draw the glowing grid.
 
-                        if ( unit_v < line_w && unit_w < line_w )
+                        double u_dist = std::min(unit_u, fabs(1. - unit_u) );
+                        double v_dist = std::min(unit_v, fabs(1. - unit_v) );
+                        double w_dist = std::min(unit_w, fabs(1. - unit_w) );
+
+
+                        bool border_cell = false; 
+                        border_cell = (( unit_u < border_w || unit_u > 1. - border_w )  &&     
+                                       ( unit_v < border_w || unit_v > 1. - border_w )) || border_cell;
+                        border_cell = (( unit_u < border_w || unit_u > 1. - border_w )  &&     
+                                       ( unit_w < border_w || unit_w > 1. - border_w )) || border_cell;
+                        border_cell = (( unit_v < border_w || unit_v > 1. - border_w )  &&     
+                                       ( unit_w < border_w || unit_w > 1. - border_w )) || border_cell;
+                        if ( border_cell )
+                        {
+                            acc_strength.setValue(ijk, 0.);
+                            acc_r.setValue(ijk, 0. );
+                            acc_g.setValue(ijk, 0. );
+                            acc_b.setValue(ijk, 0. );
+
+                            // acc_smoke_r.setValue(ijk, unit_v + unit_w );
+                            // acc_smoke_g.setValue(ijk, unit_u + unit_w  );
+                            // acc_smoke_b.setValue(ijk, unit_u + unit_v  );
+
+                            // acc_smoke_r.setValue(ijk, 1. );
+                            // acc_smoke_g.setValue(ijk, 1.  );
+                            // acc_smoke_b.setValue(ijk, 1.  );
+
+                            acc_smoke_density.setValue(ijk, .0);
+                        }
+                        else{
+                            acc_smoke_density.setValue(ijk, .1);
+
+                            acc_smoke_r.setValue(ijk, .9 );
+                            acc_smoke_g.setValue(ijk, .9  );
+                            acc_smoke_b.setValue(ijk, .9  );
+
+                            acc_smoke_color2.setValue(ijk, openvdb::Vec3s(float( 0.f ), 
+                                                                     float( 0.f ), 
+                                                                     float( 0.f )) );
+                        }
+
+
+                        if ( v_dist < line_w && w_dist < line_w )
                         {
                             acc_r.setValue(ijk, .6);
                             acc_strength.setValue(ijk, unit_u);
+     
+                            acc_smoke_density.setValue(ijk, 1.);
+                            acc_smoke_r.setValue(ijk, 1. );
                             // acc_strength.setValue(ijk, float( interp_param_to_pixel(0) ));
                         }
-                        else if ( unit_u < line_w && unit_w < line_w )
+                        else if ( u_dist < line_w && w_dist < line_w )
                         {
                             acc_g.setValue(ijk, .6);
 
                             acc_strength.setValue(ijk, unit_v);
+
+                            acc_smoke_density.setValue(ijk, 1.);
+                            acc_smoke_g.setValue(ijk, 1.  );
                             // acc_strength.setValue(ijk, float( interp_param_to_pixel(1)) );
 
                         }
-                        else if ( unit_u < line_w && unit_v < line_w )
+                        else if ( u_dist < line_w && v_dist < line_w )
                         {
                             acc_b.setValue(ijk, .6);
 
                             acc_strength.setValue(ijk, unit_w);
+
+                            acc_smoke_density.setValue(ijk, 1.);
+                            acc_smoke_b.setValue(ijk, 1.  );
                             // acc_strength.setValue(ijk, float( interp_param_to_pixel(2)) );
                         }
-                        else{
-                            acc_smoke_density.setValue(ijk, .01);
-                        }
 
-                        if ( unit_u < .1 && unit_v < line_w && unit_w < line_w )
+
+
+                        // if ( ( unit_v < line_w || unit_v > 1. - line_w ) &&     
+                        //      ( unit_w < line_w || unit_w > 1. - line_w ) )
+                        // {
+                        //     acc_r.setValue(ijk, .6);
+                        //     acc_strength.setValue(ijk, unit_u);
+                        //     acc_smoke_color2.setValue(ijk, openvdb::Vec3s(float( unit_u ), 
+                        //                                              float( 0.f ), 
+                        //                                              float( 0.f )) );
+                        //     acc_smoke_density.setValue(ijk, .3);
+                        //     acc_smoke_r.setValue(ijk, 1. );
+                        //     // acc_strength.setValue(ijk, float( interp_param_to_pixel(0) ));
+                        // }
+                        // else if ( ( unit_u < line_w || unit_u > 1. - line_w ) &&     
+                        //         (   unit_w < line_w || unit_w > 1. - line_w ) )
+                        // {
+                        //     acc_g.setValue(ijk, .6);
+
+                        //     acc_strength.setValue(ijk, unit_v);
+                        //     acc_smoke_color2.setValue(ijk, openvdb::Vec3s(float( 0.f ), 
+                        //                                              float( unit_v ), 
+                        //                                              float( 0.f )) );
+                        //     acc_smoke_density.setValue(ijk, .3);
+                        //     acc_smoke_g.setValue(ijk, 1.  );
+                        //     // acc_strength.setValue(ijk, float( interp_param_to_pixel(1)) );
+
+                        // }
+                        // else if ( ( unit_u < line_w || unit_u > 1. - line_w ) &&     
+                        //         (   unit_v < line_w || unit_v > 1. - line_w ) )
+                        // {
+                        //     acc_b.setValue(ijk, .6);
+
+                        //     acc_strength.setValue(ijk, unit_w);
+                        //     acc_smoke_color2.setValue(ijk, openvdb::Vec3s(float( 0.f ), 
+                        //                                              float( 0.f ), 
+                        //                                              float( unit_w )) );
+                        //     acc_smoke_density.setValue(ijk, .3);
+                        //     acc_smoke_b.setValue(ijk, 1.  );
+                        //     // acc_strength.setValue(ijk, float( interp_param_to_pixel(2)) );
+                        // }
+
+
+
+
+                        
+/*
+                        if ( ( unit_u < line_w || fabs(1. - unit_u) < line_w ) && 
+                             ( unit_v < line_w || fabs(1. - unit_v) < line_w ) &&
+                             ( unit_w < line_w || fabs(1. - unit_w) < line_w ) )
                         {
                             acc_strength.setValue(ijk, 1.);
                             acc_r.setValue(ijk, 1. );
@@ -347,7 +470,7 @@ int main(int argc, char *argv[])
                             acc_b.setValue(ijk, 1. );
                         }
 
-
+*/
                         // acc_r.setValue(ijk, .0);
                         // acc_g.setValue(ijk, .0);
                         // acc_b.setValue(ijk, .0);
@@ -384,23 +507,28 @@ int main(int argc, char *argv[])
 
     }
 
-    for (int i = 0; i < nverts; i++)
-    {
-        Eigen::Vector3d round = V_pixel.row(i);
-        openvdb::Coord ijk;
-        ijk[0] = int( round(0) );
-        ijk[1] = int( round(1) );
-        ijk[2] = int( round(2) );
-        acc_strength.setValue(ijk, float( 1. )); 
-        acc_r.setValue(ijk, 1.);
-        acc_g.setValue(ijk, 1.);
-        acc_b.setValue(ijk, 1.);
 
-    }
+// Show vertex positions
+    // for (int i = 0; i < nverts; i++)
+    // {
+    //     Eigen::Vector3d round = V_pixel.row(i);
+    //     openvdb::Coord ijk;
+    //     ijk[0] = int( round(0) );
+    //     ijk[1] = int( round(1) );
+    //     ijk[2] = int( round(2) );
+    //     acc_strength.setValue(ijk, float( 1. )); 
+    //     acc_r.setValue(ijk, 1.);
+    //     acc_g.setValue(ijk, 1.);
+    //     acc_b.setValue(ijk, 1.);
+
+    // }
 
     grid_r->setName("emission_r");
     grid_g->setName("emission_g");
     grid_b->setName("emission_b");
+    grid_smoke_r->setName("smoke_r");
+    grid_smoke_g->setName("smoke_g");
+    grid_smoke_b->setName("smoke_b");
     grid_strength->setName("emission_strength");
     grid_smoke_density->setName("smoke_density");
     grid_smoke_color->setName("smoke_color");
@@ -409,6 +537,9 @@ int main(int argc, char *argv[])
     grids->push_back(grid_r);
     grids->push_back(grid_g);
     grids->push_back(grid_b);
+    grids->push_back(grid_smoke_r);
+    grids->push_back(grid_smoke_g);
+    grids->push_back(grid_smoke_b);
     grids->push_back(grid_strength);
     grids->push_back(grid_smoke_density);
     grids->push_back(grid_smoke_color);
