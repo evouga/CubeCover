@@ -24,6 +24,7 @@ public:
     Eigen::MatrixXi T;
     Eigen::MatrixXd param;
     Eigen::MatrixXd param_pixel;
+    Eigen::MatrixXd param_unitcell;
 
 
     Eigen::Vector3d mesh_min;

@@ -47,8 +47,8 @@ int main(int argc, char *argv[])
 
 
 // Config settings.  
-    double cells = 4;
-    double cell_res = 64.;
+    double cells = 2;
+    double cell_res = 16.;
     double sample_res = cells * cell_res;  // target_cells * res_per_cell 
     double line_w = .05;
     double border_w = .2; // 
