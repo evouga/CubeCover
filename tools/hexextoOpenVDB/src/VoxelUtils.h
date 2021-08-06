@@ -39,7 +39,20 @@ bool pointInsideT(const Eigen::Vector3d& A,
 	              const Eigen::Vector3d& samplePoint, Eigen::VectorXd& textureCoordinate);
 
 
-void stampParamView(openvdb::FloatGrid::Accessor acc_r, 
+void stampParamView(sceneInfo info, 
+                    openvdb::FloatGrid::Accessor acc_r, 
+                    openvdb::FloatGrid::Accessor acc_g, 
+                    openvdb::FloatGrid::Accessor acc_b, 
+                    openvdb::FloatGrid::Accessor acc_smoke_r, 
+                    openvdb::FloatGrid::Accessor acc_smoke_g, 
+                    openvdb::FloatGrid::Accessor acc_smoke_b, 
+                    openvdb::FloatGrid::Accessor acc_strength, // for now blackbody and emission are the same
+                    openvdb::FloatGrid::Accessor acc_smoke_density,
+                    openvdb::Vec3SGrid::Accessor acc_smoke_color);
+
+
+void stampLatticeView(sceneInfo info, 
+                    openvdb::FloatGrid::Accessor acc_r, 
                     openvdb::FloatGrid::Accessor acc_g, 
                     openvdb::FloatGrid::Accessor acc_b, 
                     openvdb::FloatGrid::Accessor acc_smoke_r, 
