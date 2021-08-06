@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 
 
 // Config settings.  
-    double cells = 12;
+    double cells = 4;
     double cell_res = 64.;
     double sample_res = cells * cell_res;  // target_cells * res_per_cell 
     double line_w = .05;
@@ -57,15 +57,15 @@ int main(int argc, char *argv[])
 
 
 
-    Eigen::MatrixXd V;
-    Eigen::MatrixXi T;
 
 //    std::string hexexfile = argv[1];
     // std::string hexexfile = "~/Documents/MATLAB/integrable-frames-3d/output_frames_dir/notch5_500.hexex";
      // std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/notch5_500.hexex";
   //  std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/sphere_r0.17.hexex";
-         std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid_int.hexex";
+    std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid_int.hexex";
+    std::string permfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid.perm";
 
+    sceneInfo sc(hexexfile, sample_res);
 
     // just in case for debugging.
    /* std::ifstream  src(hexexfile, std::ios::binary);
@@ -73,96 +73,25 @@ int main(int argc, char *argv[])
 
     dst << src.rdbuf();
 */
-    Eigen::MatrixXd values;
-    if (!CubeCover::readHexEx(hexexfile, V, T, values))
-    {
-        std::cerr << "error reading the .hexex file" << std::endl;
-        return -1;
-    }
+
+
 
 
 	// draw tet mesh
 
     double BIG_NUM = 100000000000000000.0;
 
-	int ntets = T.rows();
-    int nverts = V.rows();
+	int ntets = sc.T.rows();
+    int nverts = sc.V.rows();
 	Eigen::MatrixXd P_viztets(4 * ntets, 3);
 	Eigen::MatrixXi E_viztets(6 * ntets, 2);
 
 
 
-    // Compute tet bounding boxes 
-
-    // For tet mesh 
-
-    Eigen::Vector3d minbound(BIG_NUM,BIG_NUM,BIG_NUM);
-    Eigen::Vector3d maxbound(-BIG_NUM,-BIG_NUM,-BIG_NUM);
-
-    // For parameterization 
-
-    Eigen::Vector3d param_min(BIG_NUM,BIG_NUM,BIG_NUM);
-    Eigen::Vector3d param_max(-BIG_NUM,-BIG_NUM,-BIG_NUM);
-
-    for (int i = 0; i < ntets; i++)
-    {
-        int idx = 0;
-        for (int j = 0; j < 4; j++)
-        {
-            Eigen::Vector3d cur_point = V.row( T(i,j) );
-            for (int k = 0; k < 3; k++)
-            {
-                if( cur_point(k) < minbound(k) )
-                    minbound(k) = cur_point(k);
-                if( cur_point(k) > maxbound(k) )
-                    maxbound(k) = cur_point(k);
-            }
-
-            Eigen::Vector3d param_point = values.row( T(i,j) );
-            for (int k = 0; k < 3; k++)
-            {
-                if( param_point(k) < param_min(k) )
-                    param_min(k) = param_point(k);
-                if( param_point(k) > param_max(k) )
-                    param_max(k) = param_point(k);
-            }
-            
-        }
-
-    }
-
-    // move min of bounding box to (0,0,0), rescale tet embedding to morph into sampling domain.  
-
-    Eigen::Vector3d rangebound = maxbound - minbound;
-    double scale_fac = rangebound.maxCoeff();
-    double pixeltoparam_scale = scale_fac / sample_res; 
-    double topixel_scale = sample_res / scale_fac; 
-    // set the max bounding box dimension in the param domain = 1, and multiply by sample res.
-    // This places the parametric domain into the full sampling space
-
-    // scratch.  
- //   Eigen::MatrixXi topixel_scale = (rangebound * ( scale_fac / sample_res)).asDiagonal();
-  //  Eigen::MatrixXi pixeltoparam_scale = (rangebound * ( sample_res / scale_fac )).asDiagonal();
-
-    Eigen::Vector3d param_rangebound = param_max - param_min;
-
-    // Set the scale in the parameter domain so that largest dimension is 1.
-    double param_scale_fac = double(param_rangebound.maxCoeff());
-
-    // V_pixel == V_pixel_space.  I.e. it embeds the parameterization in an sample_res X sample_res X sample_res cube.  
-    Eigen::MatrixXd V_pixel = V;
-    for (int i = 0; i < nverts; i++)
-    {
-        Eigen::Vector3d scale_verts = V_pixel.row(i);
-        V_pixel.row(i) = (scale_verts - minbound) * topixel_scale;
+ 
 
 
-// rescale and shift parameterization so that the parameterization domain contains the desired number of grid cells along the max dimension.
-        Eigen::Vector3d tmp = ( values.row(i)  );
-        tmp = tmp - param_min;
-        values.row(i) = tmp;
-        values.row(i) *= ( ( cells )  / param_scale_fac); 
-    }
+
     
     openvdb::initialize();
     openvdb::FloatGrid::Ptr grid_r = openvdb::FloatGrid::create();
@@ -223,8 +152,8 @@ int main(int argc, char *argv[])
         Eigen::Vector3d curt_max(-BIG_NUM,-BIG_NUM,-BIG_NUM);
         for (int v_idx = 0; v_idx < 4; v_idx++)
         {
-            int rowId = T(t, v_idx);
-            Eigen::Vector3d cur_point = V_pixel.row( rowId );
+            int rowId = sc.T(t, v_idx);
+            Eigen::Vector3d cur_point = sc.V_pixel.row( rowId );
             for ( int k = 0; k < 3; k++ )
             {
                 if( cur_point(k) < curt_min(k) )
@@ -236,10 +165,10 @@ int main(int argc, char *argv[])
 
 
 // return vertex positions in pixel space.  
-        Eigen::Vector3d A = V_pixel.row( T(t, 0) );
-        Eigen::Vector3d B = V_pixel.row( T(t, 1) );
-        Eigen::Vector3d C = V_pixel.row( T(t, 2) );
-        Eigen::Vector3d D = V_pixel.row( T(t, 3) );
+        Eigen::Vector3d A = sc.V_pixel.row( sc.T(t, 0) );
+        Eigen::Vector3d B = sc.V_pixel.row( sc.T(t, 1) );
+        Eigen::Vector3d C = sc.V_pixel.row( sc.T(t, 2) );
+        Eigen::Vector3d D = sc.V_pixel.row( sc.T(t, 3) );
 
 
 
@@ -267,16 +196,16 @@ int main(int argc, char *argv[])
              //       std::cout << param_val_tet.transpose() << std::endl << std::endl;
                     if ( pIsIn )
                     {
-                        // load tet texture values 
+                        // load tet texture param 
                                         //        acc_smoke_density.setValue(ijk, float( param_val_tet.head(3).sum() )); 
                 //        acc_strength.setValue(ijk, float( .5 )); 
 
                         // param vals 
                         // double s = 3.;
-                        // Eigen::Vector3d da = values.row(4 * i + 1)/s - values.row(4 * i)/s;
-                        // Eigen::Vector3d db = values.row(4 * i + 2)/s - values.row(4 * i)/s;
-                        // Eigen::Vector3d dc = values.row(4 * i + 3)/s - values.row(4 * i)/s;
-                        // Eigen::Vector3d orig = values.row(4 * i)/s;
+                        // Eigen::Vector3d da = param.row(4 * i + 1)/s - param.row(4 * i)/s;
+                        // Eigen::Vector3d db = param.row(4 * i + 2)/s - param.row(4 * i)/s;
+                        // Eigen::Vector3d dc = param.row(4 * i + 3)/s - param.row(4 * i)/s;
+                        // Eigen::Vector3d orig = param.row(4 * i)/s;
                         
 
 
@@ -287,20 +216,20 @@ int main(int argc, char *argv[])
                         // Eigen::Vector3d orig = A;
 
                
-                        Eigen::Vector3d da = values.row(4 * t + 1) - values.row(4 * t);
-                        Eigen::Vector3d db = values.row(4 * t + 2) - values.row(4 * t);
-                        Eigen::Vector3d dc = values.row(4 * t + 3) - values.row(4 * t);
-                        Eigen::Vector3d orig = values.row(4 * t);
+                        Eigen::Vector3d da = sc.param.row(4 * t + 1) - sc.param.row(4 * t);
+                        Eigen::Vector3d db = sc.param.row(4 * t + 2) - sc.param.row(4 * t);
+                        Eigen::Vector3d dc = sc.param.row(4 * t + 3) - sc.param.row(4 * t);
+                        Eigen::Vector3d orig = sc.param.row(4 * t);
 
                         double s0 = param_val_tet(0);
                         double s1 = param_val_tet(1);
                         double s2 = param_val_tet(2);
 
                         Eigen::Vector3d interp_param_to_pixel = s0 * da + s1 * db + s2 * dc + orig;
-                        // interp_param_to_pixel *= cells / sample_res;
+                        // interp_param_to_pixel *= 1. / cells;
 
 
-                        // This plots the param values per tet in the underlying mesh.  
+                        // This plots the param param per tet in the underlying mesh.  
 
                         acc_smoke_color.setValue(ijk, openvdb::Vec3s(float( param_val_tet(0) ), 
                                                                      float( param_val_tet(1) ), 
@@ -323,7 +252,7 @@ int main(int argc, char *argv[])
                         // acc_g.setValue(ijk, unit_v );
                         // acc_b.setValue(ijk, unit_w );
 
-                        // This plots the param values per point in parameter space 
+                        // This plots the param param per point in parameter space 
                         acc_smoke_color2.setValue(ijk, openvdb::Vec3s(float( unit_v ) + float( unit_w ), 
                                                                       float( unit_w ) + float( unit_u ), 
                                                                       float( unit_v ) + float( unit_u )) );
@@ -562,7 +491,7 @@ int main(int argc, char *argv[])
             for ( int k = 0; k < sample_rngbnd(2); k++ )
             {
                 Eigen:Vector3d samp_point(i, j, k);
-                samp_point = sample_rngbnd * samp_point + minbound;
+                samp_point = sample_rngbnd * samp_point + mesh_min;
             }       
         }
     }
@@ -573,7 +502,7 @@ int main(int argc, char *argv[])
 		int idx = 0;
 		for (int j = 0; j < 4; j++)
 		{
-			P_viztets.row(4 * i + j) = values.row(4 * i + j);
+			P_viztets.row(4 * i + j) = param.row(4 * i + j);
 			
 			for (int k = j + 1; k < 4; k++)
 			{
@@ -609,10 +538,10 @@ int main(int argc, char *argv[])
     std::vector<int> badvert_ids;
 
 
-    extractIsolines(V, mesh, values, P, E, P2, E2, badvert_ids);
+    extractIsolines(V, mesh, param, P, E, P2, E2, badvert_ids);
         std::cout << "BAD VERTS SIZE " << badvert_ids.size() <<std::endl;
 
-    extractPoints(V, mesh, values, points, colors);
+    extractPoints(V, mesh, param, points, colors);
 
 
     for (size_t i = 0; i < V.rows(); i++) {
