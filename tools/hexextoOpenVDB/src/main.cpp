@@ -7,6 +7,7 @@
 #include "ReadHexEx.h"
 #include "polyscope/surface_mesh.h"
 #include "VoxelUtils.h"
+#include "SceneInfo.h"
 #include <Eigen/Dense>
 
 #include "polyscope/point_cloud.h"
@@ -14,7 +15,6 @@
 #include <openvdb/openvdb.h>
 #include <openvdb/io/Stream.h>
 
-#include <fstream>
 
 /*
 
@@ -47,12 +47,23 @@ int main(int argc, char *argv[])
 
 
 // Config settings.  
-    double cells = 2;
-    double cell_res = 16.;
+    double cells = 2.;
+    // double cell_res = 64.;
+    double cell_res = 32.;
     double sample_res = cells * cell_res;  // target_cells * res_per_cell 
     double line_w = .05;
     double border_w = .2; // 
-    double cosmic_background = 0.0000; // this is the glow of the parameterisation.   Try setting to like .04
+    // double cosmic_background = 0.0000; // this is the glow of the parameterisation.   Try setting to like .04
+    embedding cur_embed = embedding::PARAM_SPACE;  // PARAM_SPACE
+
+
+
+    if( cur_embed == embedding::PARAM_SPACE )
+    {
+        cell_res = cell_res / 8.;
+
+
+    }
 
 
 
@@ -65,7 +76,7 @@ int main(int argc, char *argv[])
     std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid_int.hexex";
     std::string permfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid.perm";
 
-    sceneInfo sc(hexexfile, sample_res);
+    SceneInfo sc(hexexfile, sample_res);
 
     // just in case for debugging.
    /* std::ifstream  src(hexexfile, std::ios::binary);
@@ -97,27 +108,20 @@ int main(int argc, char *argv[])
     openvdb::FloatGrid::Ptr grid_r = openvdb::FloatGrid::create();
     openvdb::FloatGrid::Ptr grid_g = openvdb::FloatGrid::create();
     openvdb::FloatGrid::Ptr grid_b = openvdb::FloatGrid::create();
-    openvdb::FloatGrid::Accessor acc_r = grid_r->getAccessor();
-    openvdb::FloatGrid::Accessor acc_g = grid_g->getAccessor();
-    openvdb::FloatGrid::Accessor acc_b = grid_b->getAccessor();
+
 
 
     openvdb::FloatGrid::Ptr grid_smoke_r = openvdb::FloatGrid::create();
     openvdb::FloatGrid::Ptr grid_smoke_g = openvdb::FloatGrid::create();
     openvdb::FloatGrid::Ptr grid_smoke_b = openvdb::FloatGrid::create();
-    openvdb::FloatGrid::Accessor acc_smoke_r = grid_smoke_r->getAccessor();
-    openvdb::FloatGrid::Accessor acc_smoke_g = grid_smoke_g->getAccessor();
-    openvdb::FloatGrid::Accessor acc_smoke_b = grid_smoke_b->getAccessor();
+
 
 
     openvdb::FloatGrid::Ptr grid_strength = openvdb::FloatGrid::create();
     openvdb::FloatGrid::Ptr grid_smoke_density = openvdb::FloatGrid::create();
     openvdb::Vec3SGrid::Ptr grid_smoke_color = openvdb::Vec3SGrid::create();
-    openvdb::Vec3SGrid::Ptr grid_smoke_color2 = openvdb::Vec3SGrid::create();    
-    openvdb::FloatGrid::Accessor acc_strength = grid_strength->getAccessor();
-    openvdb::FloatGrid::Accessor acc_smoke_density = grid_smoke_density->getAccessor();
-    openvdb::Vec3SGrid::Accessor acc_smoke_color = grid_smoke_color->getAccessor();
-    openvdb::Vec3SGrid::Accessor acc_smoke_color2 = grid_smoke_color2->getAccessor();
+    // openvdb::Vec3SGrid::Ptr grid_smoke_color2 = openvdb::Vec3SGrid::create();    
+
 
     grid_r->setName("emission_r");
     grid_g->setName("emission_g");
@@ -129,7 +133,7 @@ int main(int argc, char *argv[])
     grid_strength->setName("emission_strength");
     grid_smoke_density->setName("smoke_density");
     grid_smoke_color->setName("smoke_color");
-    grid_smoke_color2->setName("smoke_color2");
+    // grid_smoke_color2->setName("smoke_color2");
 
     grid_r->setGridClass(openvdb::GRID_FOG_VOLUME);
     grid_g->setGridClass(openvdb::GRID_FOG_VOLUME);
@@ -140,7 +144,7 @@ int main(int argc, char *argv[])
     grid_strength->setGridClass(openvdb::GRID_FOG_VOLUME);
     grid_smoke_density->setGridClass(openvdb::GRID_FOG_VOLUME);
     grid_smoke_color->setGridClass(openvdb::GRID_FOG_VOLUME);
-    grid_smoke_color2->setGridClass(openvdb::GRID_FOG_VOLUME);
+    // grid_smoke_color2->setGridClass(openvdb::GRID_FOG_VOLUME);
 
     openvdb::Coord ijk;
 
@@ -157,10 +161,9 @@ int main(int argc, char *argv[])
     //                  acc_smoke_density,
     //                  acc_smoke_color);
 
-    stampParamView(sc,
-                   acc_r, acc_g, acc_b, 
-                   acc_smoke_r, acc_smoke_g, acc_smoke_b, 
-                   acc_strength, acc_smoke_density, acc_smoke_color);
+
+    // sc.V_curr = embedding::WORLD_SPACE;
+    stampParamView(sc);
     
 
 
