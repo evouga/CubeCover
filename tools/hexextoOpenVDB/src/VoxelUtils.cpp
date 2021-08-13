@@ -7,7 +7,7 @@
 
 #include "polyscope/point_cloud.h"
 
-
+#include <openvdb/openvdb.h>
 
 
 bool pointInsideT(const Eigen::Vector3d& A, 
@@ -61,13 +61,12 @@ void stampParamView(SceneInfo sc)
 {
     double BIG_NUM = 100000000000000000.0;
     double line_w = .05;
-    double cells = sc.cells;
 
     sc.param_pixel = sc.param_pixel * 1.; // rescale factor / max # of cells in a row.
-    Eigen::MatrixXd param_gridcell = sc.param_unitcell * cells;
+    Eigen::MatrixXd param_gridcell = sc.param_unitcell * sc.cells;
 
-
-    double border_w = .2;
+    double shell_thick = .05;
+    double border_w = .35;
     double facet_w = .01;
     double halo_w = .01;
     double cosmic_background = 0.0000;
@@ -75,15 +74,15 @@ void stampParamView(SceneInfo sc)
     int ntets = sc.nTets();
     // int nverts = sc.nVerts();
 
-    openvdb::FloatGrid::Accessor acc_r = sc.grids.r->getAccessor();
-    openvdb::FloatGrid::Accessor acc_g = sc.grids.g->getAccessor();
-    openvdb::FloatGrid::Accessor acc_b = sc.grids.b->getAccessor();
-    openvdb::FloatGrid::Accessor acc_smoke_r = sc.grids.smoke_r->getAccessor();
-    openvdb::FloatGrid::Accessor acc_smoke_g = sc.grids.smoke_g->getAccessor();
-    openvdb::FloatGrid::Accessor acc_smoke_b = sc.grids.smoke_b->getAccessor();
-    openvdb::FloatGrid::Accessor acc_strength = sc.grids.strength->getAccessor(); // for now blackbody and emission are the same
-    openvdb::FloatGrid::Accessor acc_smoke_density = sc.grids.smoke_density->getAccessor();
-    openvdb::Vec3SGrid::Accessor acc_smoke_color = sc.grids.smoke_color->getAccessor();
+    openvdb::FloatGrid::Accessor acc_r = sc.grid.r->getAccessor();
+    openvdb::FloatGrid::Accessor acc_g = sc.grid.g->getAccessor();
+    openvdb::FloatGrid::Accessor acc_b = sc.grid.b->getAccessor();
+    openvdb::FloatGrid::Accessor acc_smoke_r = sc.grid.smoke_r->getAccessor();
+    openvdb::FloatGrid::Accessor acc_smoke_g = sc.grid.smoke_g->getAccessor();
+    openvdb::FloatGrid::Accessor acc_smoke_b = sc.grid.smoke_b->getAccessor();
+    openvdb::FloatGrid::Accessor acc_strength = sc.grid.strength->getAccessor(); // for now blackbody and emission are the same
+    openvdb::FloatGrid::Accessor acc_smoke_density = sc.grid.smoke_density->getAccessor();
+    openvdb::Vec3SGrid::Accessor acc_smoke_color = sc.grid.smoke_color->getAccessor();
 
 
 
@@ -169,7 +168,7 @@ void stampParamView(SceneInfo sc)
                         double s2 = param_val_tet(2);
 
                         Eigen::Vector3d interp_param_to_pixel = s0 * da + s1 * db + s2 * dc + orig;
-                        // interp_param_to_pixel *= cells;
+                        interp_param_to_pixel *= 1. / 6.28;
 
 
                         // This plots the param param per tet in the underlying mesh.  
@@ -186,18 +185,29 @@ void stampParamView(SceneInfo sc)
                         double unit_v = interp_param_to_pixel(1) - floor(interp_param_to_pixel(1));
                         double unit_w = interp_param_to_pixel(2) - floor(interp_param_to_pixel(2));
 
+// Project vector onto closest line.  
+
+                        // multiply by jacobian. 
+
+                        double u_dist = std::min(unit_u, 1. - unit_u );
+                        double v_dist = std::min(unit_v, 1. - unit_v );
+                        double w_dist = std::min(unit_w, 1. - unit_w );
+
+
+
+
+///////////////////////////////////////////////////////
+                        ///////////////////////  Plot GRID
+                        ///////////////////////////////
 
                         // Stamp the colored grid pattern.
                         if (sc.stamp_grid)
                         {
-                            acc_smoke_r.setValue(ijk, 0.7 );
-                            acc_smoke_g.setValue(ijk, 0.9  );
-                            acc_smoke_b.setValue(ijk, 0.1  );
-                            acc_smoke_density.setValue(ijk, 0.000 );
+                            // acc_smoke_r.setValue(ijk, 0.9 );
+                            // acc_smoke_g.setValue(ijk, 0.9  );
+                            // acc_smoke_b.setValue(ijk, 0.9  );
+                            // acc_smoke_density.setValue(ijk, 0.000 );
 
-                            double u_dist = std::min(unit_u, fabs(1. - unit_u) );
-                            double v_dist = std::min(unit_v, fabs(1. - unit_v) );
-                            double w_dist = std::min(unit_w, fabs(1. - unit_w) );
 
                             if ( v_dist < line_w && w_dist < line_w )
                             {
@@ -239,9 +249,122 @@ void stampParamView(SceneInfo sc)
                                 acc_smoke_g.setValue(ijk, .9 );
                                 acc_smoke_b.setValue(ijk, 1.0 );
                             }
+
+
                         }
 
 
+///////////////////////////////////////////////////////
+                        ///////////////////////  Plot Exploded Hexes
+                        ///////////////////////////////
+
+                        if (sc.stamp_centers)
+                        {
+
+
+                            if (u_dist > border_w && v_dist > border_w && w_dist > border_w)
+                            {
+                                acc_smoke_r.setValue(ijk, 0.95 );
+                                acc_smoke_g.setValue(ijk, 0.95  );
+                                acc_smoke_b.setValue(ijk, 0.95  );
+                                acc_smoke_density.setValue(ijk, .2 );
+
+                                acc_r.setValue(ijk, .95 );
+                                acc_g.setValue(ijk, .95 );
+                                acc_b.setValue(ijk, .95 );
+                                acc_strength.setValue(ijk, .05);
+                            }
+                            else if ( u_dist > border_w - shell_thick && 
+                                      v_dist > border_w && 
+                                      w_dist > border_w)
+                            {
+                                acc_r.setValue(ijk, .0 );
+                                acc_g.setValue(ijk, .7 );
+                                acc_b.setValue(ijk, .7 );
+                                acc_strength.setValue(ijk, .2);
+
+                                acc_smoke_r.setValue(ijk, 0.95 );
+                                acc_smoke_g.setValue(ijk, 1.0  );
+                                acc_smoke_b.setValue(ijk, 1.  );
+                                acc_smoke_density.setValue(ijk, .05 );
+                            }
+                            else if ( u_dist > border_w && 
+                                      v_dist > border_w - shell_thick && 
+                                      w_dist > border_w)
+                            {
+                                acc_r.setValue(ijk, .7);
+                                acc_g.setValue(ijk, .0 );
+                                acc_b.setValue(ijk, .7 );
+                                acc_strength.setValue(ijk, .2);
+
+                                acc_smoke_r.setValue(ijk, 1.0 );
+                                acc_smoke_g.setValue(ijk, 0.95  );
+                                acc_smoke_b.setValue(ijk, 1.  );
+                                acc_smoke_density.setValue(ijk, .1 );
+                            }
+                            else if ( u_dist > border_w && 
+                                      v_dist > border_w && 
+                                      w_dist > border_w - shell_thick)
+                            {
+                                acc_r.setValue(ijk, .7 );
+                                acc_g.setValue(ijk, .7 );
+                                acc_b.setValue(ijk, .0 );
+                                acc_strength.setValue(ijk, .2);
+
+                                acc_smoke_r.setValue(ijk, 1.0 );
+                                acc_smoke_g.setValue(ijk, 1.0  );
+                                acc_smoke_b.setValue(ijk, .95  );
+                                acc_smoke_density.setValue(ijk, .2 );
+                            }
+
+                            // acc_smoke_r.setValue(ijk, 0.7 );
+                            // acc_smoke_g.setValue(ijk, 0.9  );
+                            // acc_smoke_b.setValue(ijk, 0.1  );
+                            // acc_smoke_density.setValue(ijk, 0.000 );
+
+
+
+                            // if ( v_dist < line_w && w_dist < line_w )
+                            // {
+                            //     acc_r.setValue(ijk, .6 );
+                            //     acc_g.setValue(ijk, .0 );
+                            //     acc_b.setValue(ijk, 0. );
+                            //     acc_strength.setValue(ijk, unit_u);
+         
+                            //     acc_smoke_density.setValue(ijk, 1.);
+                            //     acc_smoke_r.setValue(ijk, 1. );
+                            //     acc_smoke_g.setValue(ijk, .9 );
+                            //     acc_smoke_b.setValue(ijk, .9 );
+                            //     // acc_strength.setValue(ijk, float( interp_param_to_pixel(0) ));
+                            // }
+                            // else if ( u_dist < line_w && w_dist < line_w )
+                            // {
+                            //     acc_r.setValue(ijk, .0 );
+                            //     acc_g.setValue(ijk, .6 );
+                            //     acc_b.setValue(ijk, 0. );
+
+                            //     acc_strength.setValue(ijk, unit_v);
+
+                            //     acc_smoke_density.setValue(ijk, 1.);
+                            //     acc_smoke_r.setValue(ijk, .9 );
+                            //     acc_smoke_g.setValue(ijk, 1. );
+                            //     acc_smoke_b.setValue(ijk, .9 );
+
+                            // }
+                            // else if ( u_dist < line_w && v_dist < line_w )
+                            // {
+                            //     acc_r.setValue(ijk, .0 );
+                            //     acc_g.setValue(ijk, .0 );
+                            //     acc_b.setValue(ijk, .6 );
+
+                            //     acc_strength.setValue(ijk, unit_w);
+
+                            //     acc_smoke_density.setValue(ijk, 1.);
+                            //     acc_smoke_r.setValue(ijk, .9 );
+                            //     acc_smoke_g.setValue(ijk, .9 );
+                            //     acc_smoke_b.setValue(ijk, 1.0 );
+                            // }
+                        }
 
                         
 
@@ -251,9 +374,9 @@ void stampParamView(SceneInfo sc)
                         // TODO: make distance function of radius here - refactor.  
                         /////////////////////////////////////////////////////////
 
-                        double u_dist = std::min(unit_u, fabs(1. - unit_u) );
-                        double v_dist = std::min(unit_v, fabs(1. - unit_v) );
-                        double w_dist = std::min(unit_w, fabs(1. - unit_w) );
+                        // double u_dist = std::min(unit_u, fabs(1. - unit_u) );
+                        // double v_dist = std::min(unit_v, fabs(1. - unit_v) );
+                        // double w_dist = std::min(unit_w, fabs(1. - unit_w) );
 
 /*
 
@@ -268,13 +391,13 @@ void stampParamView(SceneInfo sc)
 */
 
 
-                        bool border_cell = false; 
-                        border_cell = (( unit_u < border_w || unit_u > 1. - border_w )  &&     
-                                       ( unit_v < border_w || unit_v > 1. - border_w )) || border_cell;
-                        border_cell = (( unit_u < border_w || unit_u > 1. - border_w )  &&     
-                                       ( unit_w < border_w || unit_w > 1. - border_w )) || border_cell;
-                        border_cell = (( unit_v < border_w || unit_v > 1. - border_w )  &&     
-                                       ( unit_w < border_w || unit_w > 1. - border_w )) || border_cell;
+                        // bool border_cell = false; 
+                        // border_cell = (( unit_u < border_w || unit_u > 1. - border_w )  &&     
+                        //                ( unit_v < border_w || unit_v > 1. - border_w )) || border_cell;
+                        // border_cell = (( unit_u < border_w || unit_u > 1. - border_w )  &&     
+                        //                ( unit_w < border_w || unit_w > 1. - border_w )) || border_cell;
+                        // border_cell = (( unit_v < border_w || unit_v > 1. - border_w )  &&     
+                        //                ( unit_w < border_w || unit_w > 1. - border_w )) || border_cell;
    /*                     if ( border_cell )
                         {
                             sc.acc_strength.setValue(ijk, 0.);

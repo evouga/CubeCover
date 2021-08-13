@@ -33,13 +33,14 @@ public:
 
     int cells; // user provided parameter.  
 
-    
+
     // int nFaces() const { return F.rows(); }
     // int nEdges() const { return E.rows(); }
 
     Eigen::Vector3d get_V_pos(int t_idx, int v_idx);
 
     embedding V_curr = PARAM_SPACE;
+    VDB_Grids grid; 
     bool stamp_grid;
     bool stamp_centers;
     VDB_Grids grids;
