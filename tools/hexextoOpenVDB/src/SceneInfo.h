@@ -38,6 +38,7 @@ public:
     // int nEdges() const { return E.rows(); }
 
     Eigen::Vector3d get_V_pos(int t_idx, int v_idx);
+    Eigen::Vector3d get_V_pos(int t_idx, int v_idx, double time);
 
     embedding V_curr = PARAM_SPACE;
     VDB_Grids grid; 
@@ -46,7 +47,7 @@ public:
     VDB_Grids grids;
 
     Eigen::MatrixXi T;
-    
+
     Eigen::MatrixXd V;
     Eigen::MatrixXd V_unitcell;
     Eigen::MatrixXd V_pixel;

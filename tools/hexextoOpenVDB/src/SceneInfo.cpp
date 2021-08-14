@@ -97,7 +97,7 @@ SceneInfo::SceneInfo( const std::string hexexfile, const double sample_res )
 
 
         // V_pixel == V_pixel_space.  I.e. it embeds the parameterization in an sample_res X sample_res X sample_res cube.  
-    Eigen::MatrixXd V_pixel = V;
+    this->V_pixel = V;
     for (int i = 0; i < nverts; i++)
     {
         Eigen::Vector3d scale_verts = V_pixel.row(i);
@@ -115,7 +115,7 @@ SceneInfo::SceneInfo( const std::string hexexfile, const double sample_res )
 
     }
     Eigen::MatrixXd param_pixel = param * sample_res;
-    V_unitcell = V_pixel;
+    this->V_unitcell = V_pixel;
     V_pixel = V_unitcell * sample_res;
     // V_pixel = param_pixel;
     this->V_pixel = V_pixel;
@@ -142,10 +142,12 @@ Eigen::Vector3d SceneInfo::get_V_pos(int t_idx, int v_idx)
 {
     if( V_curr == embedding::PARAM_SPACE )
     {
+        // std::cout << "param" << std::endl;
         return param_pixel.row( 4*t_idx + v_idx );
     }
     else if( V_curr == embedding::WORLD_SPACE )
     {
+        // std::cout << "world" << std::endl;
         return V_pixel.row( T(t_idx, v_idx) );
     }
     return Eigen::Vector3d::Zero();

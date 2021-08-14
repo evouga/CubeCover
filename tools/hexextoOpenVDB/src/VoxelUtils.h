@@ -18,6 +18,10 @@ bool pointInsideT(const Eigen::Vector3d& A,
 	              const Eigen::Vector3d& samplePoint, Eigen::VectorXd& textureCoordinate);
 
 
+Eigen::Matrix3d JacobianMetric(SceneInfo sc, int t_idx);
+
+
+
 void stampParamView(SceneInfo info);
 
 

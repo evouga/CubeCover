@@ -53,9 +53,9 @@ int main(int argc, char *argv[])
 
 
 // Config settings.  
-    double cells = 3.;
+    double cells = 4.;
     // double cell_res = 64.;
-    double cell_res = 12.;
+    double cell_res = 8.;
     double sample_res = cells * cell_res;  // target_cells * res_per_cell 
     double line_w = .05;
     double border_w = .2; // 
@@ -197,6 +197,10 @@ int main(int argc, char *argv[])
 
 
     // sc.V_curr = embedding::WORLD_SPACE;
+
+
+    // stampParamView(sc);
+    stampScalarView(sc);
     stampParamView(sc);
     
 
