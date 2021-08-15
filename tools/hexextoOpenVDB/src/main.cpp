@@ -16,6 +16,13 @@
 #include <openvdb/io/Stream.h>
 
 
+#include "../../singularityviewer/src/SingularCurveNetwork.h"
+#include "FrameField.h"
+
+
+
+
+
 /*
 
 This file contains a basic export tool to VDB files 
@@ -28,6 +35,13 @@ This file contains a basic export tool to VDB files
 ---       Scalar field per tet visualization 
 ---       Branch Cuts Vizualization 
 ---       Animation???
+
+
+--- jacobian for showing isolines 
+--- mesh surface 
+--- singularities 
+--- parse ovm file, export exploded hex mesh 
+--- scripts for automating blah blah. 
 
 */
 
@@ -61,7 +75,7 @@ int main(int argc, char *argv[])
     double border_w = .2; // 
     // double cosmic_background = 0.0000; // this is the glow of the parameterisation.   Try setting to like .04
     // embedding cur_embed = embedding::PARAM_SPACE;  // PARAM_SPACE
-     embedding cur_embed = embedding::PARAM_SPACE;  // PARAM_S
+     embedding cur_embed = embedding::WORLD_SPACE;  // PARAM_S
 
 
 
