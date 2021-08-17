@@ -66,11 +66,14 @@ Eigen::Matrix3d JacobianMetric(SceneInfo sc, int t_idx)
         Eigen::Vector3d C_world = sc.V_unitcell.row( sc.T(t_idx, 2) );
         Eigen::Vector3d D_world = sc.V_unitcell.row( sc.T(t_idx, 3) );
 
-        Eigen::Vector3d A_param = sc.param_unitcell.row( 4*t_idx + 0  );
-        Eigen::Vector3d B_param = sc.param_unitcell.row( 4*t_idx + 1 );
-        Eigen::Vector3d C_param = sc.param_unitcell.row( 4*t_idx + 2 );
-        Eigen::Vector3d D_param = sc.param_unitcell.row( 4*t_idx + 3 );
-
+        // Eigen::Vector3d A_param = sc.param_unitcell.row( 4*t_idx + 0  );
+        // Eigen::Vector3d B_param = sc.param_unitcell.row( 4*t_idx + 1 );
+        // Eigen::Vector3d C_param = sc.param_unitcell.row( 4*t_idx + 2 );
+        // Eigen::Vector3d D_param = sc.param_unitcell.row( 4*t_idx + 3 );
+        Eigen::Vector3d A_param = sc.param_unitcell.row( 4*t_idx + 3  );
+        Eigen::Vector3d B_param = sc.param_unitcell.row( 4*t_idx + 2 );
+        Eigen::Vector3d C_param = sc.param_unitcell.row( 4*t_idx + 1 );
+        Eigen::Vector3d D_param = sc.param_unitcell.row( 4*t_idx + 0 );
 
 
         Eigen::Matrix3d toWorld;
@@ -90,7 +93,7 @@ Eigen::Matrix3d JacobianMetric(SceneInfo sc, int t_idx)
         toParam = toParam.transpose();
 
 
-        Eigen::Matrix3d jacobian = toWorld * toParam.inverse();
+        Eigen::Matrix3d jacobian =  toParam * toWorld.inverse();
 
         return jacobian;
 }
@@ -353,8 +356,8 @@ void stampScalarView(SceneInfo sc)
     Eigen::MatrixXd param_gridcell = sc.param_unitcell * sc.cells;
 
 
-    double scale_fac = .05;
-    double smoke_scale_fac = .0005;
+    double scale_fac = .01;
+    double smoke_scale_fac = .005;
 
     int ntets = sc.nTets();
     // int nverts = sc.nVerts();
@@ -582,7 +585,7 @@ void stampScalarView(SceneInfo sc)
 void stampParamView(SceneInfo sc)
 {
     double BIG_NUM = 100000000000000000.0;
-    double line_w = .10;
+    
 
     sc.param_pixel = sc.param_pixel * 1.; // rescale factor / max # of cells in a row.
     Eigen::MatrixXd param_gridcell = sc.param_unitcell * sc.cells;
@@ -590,6 +593,8 @@ void stampParamView(SceneInfo sc)
 
     double shell_thick = .05;
     double space_thick = shell_thick / 2.;
+    double line_w = .10;
+    double world_line_w = .07;
 
     double border_w = .4;
     double facet_w = .01;
@@ -720,33 +725,55 @@ void stampParamView(SceneInfo sc)
 // Project vector onto closest line.  
 
                         // multiply by jacobian. 
-
+                        // if (  ) 
                         double u_dist = std::min(unit_u, 1. - unit_u );
                         double v_dist = std::min(unit_v, 1. - unit_v );
                         double w_dist = std::min(unit_w, 1. - unit_w );
 
-                        Eigen::Matrix3d param2world = jacobian.inverse();
+                        Eigen::Vector3d paramVal_shifted;
+                        paramVal_shifted << u_dist, v_dist, w_dist;
+
+                        Eigen::Vector3d param2world = jacobian * paramVal_shifted;
+
+                        // if( sc.V_curr == embedding::WORLD_SPACE )
+                        // {
+
+                        //     u_dist = param2world[0];
+                        //     v_dist = param2world[1];
+                        //     w_dist = param2world[2];
+
+                        // }
 
 
 
+                        Eigen::Vector3d roundedWorld = paramVal_shifted;
+                        if ( v_dist < line_w && w_dist < line_w )
+                        {
+                            roundedWorld[0] = 0.;
+                        }
+                        if ( u_dist < line_w && w_dist < line_w )
+                        {
+                            roundedWorld[1] = 0.;
+                        }
+                        if ( u_dist < line_w && v_dist < line_w )
+                        {
+                            roundedWorld[2] = 0.;
+                        }
+                        
 
-// test vector in the axis plane so it's 2D, evaluate jacobian to put into world coordiantes before filtering.
+                        // std::cout << paramVal_shifted << " param val shift " << std::endl;
+                        // // std::cout << paramVal << " param val " << std::endl;
+                         // std::cout << u_dist << " " << v_dist << " " << w_dist << " u, v, w dist " << std::endl;
+                        // std::cout << param2world << " param2world" << std::endl;
+                        // std::cout << roundedWorld << " roundedWorld " << std::endl;
 
 
-
-
-
-///////////////////////////////////////////////////////
-                        ///////////////////////  Plot GRID
-                        ///////////////////////////////
-
-                        // Stamp the colored grid pattern.
                         if (sc.stamp_grid)
                         {
-                            // acc_smoke_r.setValue(ijk, 0.9 );
-                            // acc_smoke_g.setValue(ijk, 0.9  );
-                            // acc_smoke_b.setValue(ijk, 0.9  );
-                            // acc_smoke_density.setValue(ijk, 0.000 );
+
+
+
+
 
                             if ( v_dist < line_w && w_dist < line_w )
                             {
@@ -754,11 +781,17 @@ void stampParamView(SceneInfo sc)
                                 acc_g.setValue(ijk, .0 );
                                 acc_b.setValue(ijk, 0. );
                                 acc_strength.setValue(ijk, unit_u);
+
+
+                                if ( roundedWorld.norm() < world_line_w )
+                                {
+                                    acc_smoke_density.setValue(ijk, 1.);
+                                    acc_smoke_r.setValue(ijk, 1. );
+                                    acc_smoke_g.setValue(ijk, .9 );
+                                    acc_smoke_b.setValue(ijk, .9 );
+                                }
          
-                                acc_smoke_density.setValue(ijk, 1.);
-                                acc_smoke_r.setValue(ijk, 1. );
-                                acc_smoke_g.setValue(ijk, .9 );
-                                acc_smoke_b.setValue(ijk, .9 );
+                               
                                 // acc_strength.setValue(ijk, float( interp_param_to_pixel(0) ));
                             }
                             else if ( u_dist < line_w && w_dist < line_w )
@@ -769,10 +802,15 @@ void stampParamView(SceneInfo sc)
 
                                 acc_strength.setValue(ijk, unit_v);
 
-                                acc_smoke_density.setValue(ijk, 1.);
-                                acc_smoke_r.setValue(ijk, .9 );
-                                acc_smoke_g.setValue(ijk, 1. );
-                                acc_smoke_b.setValue(ijk, .9 );
+                                if ( roundedWorld.norm() < world_line_w )
+                                {
+                                    acc_smoke_density.setValue(ijk, 1.);
+                                    acc_smoke_r.setValue(ijk, .9 );
+                                    acc_smoke_g.setValue(ijk, 1. );
+                                    acc_smoke_b.setValue(ijk, .9 );
+                                }
+
+
 
                             }
                             else if ( u_dist < line_w && v_dist < line_w )
@@ -783,14 +821,114 @@ void stampParamView(SceneInfo sc)
 
                                 acc_strength.setValue(ijk, unit_w);
 
-                                acc_smoke_density.setValue(ijk, 1.);
-                                acc_smoke_r.setValue(ijk, .9 );
-                                acc_smoke_g.setValue(ijk, .9 );
-                                acc_smoke_b.setValue(ijk, 1.0 );
+                                if ( roundedWorld.norm() < world_line_w )
+                                {
+                                    acc_smoke_density.setValue(ijk, 1.);
+                                    acc_smoke_r.setValue(ijk, .9 );
+                                    acc_smoke_g.setValue(ijk, .9 );
+                                    acc_smoke_b.setValue(ijk, 1.0 );
+                                }
+
+
                             }
-
-
                         }
+               
+
+                        // if (sc.stamp_grid)
+                        // {
+                        //    char color = 'r';
+                        //    if ()
+                        //    if( param2world.norm() < line_w ) 
+                        //    {
+
+
+                        //    }
+                        // }
+
+
+
+// test vector in the axis plane so it's 2D, evaluate jacobian to put into world coordiantes before filtering.
+
+
+
+
+
+// ///////////////////////////////////////////////////////
+//                         ///////////////////////  Plot GRID
+//                         ///////////////////////////////
+
+//                         // // Stamp the colored grid pattern.
+//                         if (sc.stamp_grid)
+//                         {
+//                             // acc_smoke_r.setValue(ijk, 0.9 );
+//                             // acc_smoke_g.setValue(ijk, 0.9  );
+//                             // acc_smoke_b.setValue(ijk, 0.9  );
+//                             // acc_smoke_density.setValue(ijk, 0.000 );
+
+//                             if ( v_dist < line_w && w_dist < line_w )
+//                             {
+//                                 acc_r.setValue(ijk, .6 );
+//                                 acc_g.setValue(ijk, .0 );
+//                                 acc_b.setValue(ijk, 0. );
+//                                 acc_strength.setValue(ijk, unit_u);
+
+//                                 param2world[0] = 0.;
+
+//                                 if ( param2world.norm() < line_w )
+//                                 {
+//                                     acc_smoke_density.setValue(ijk, 1.);
+//                                     acc_smoke_r.setValue(ijk, 1. );
+//                                     acc_smoke_g.setValue(ijk, .9 );
+//                                     acc_smoke_b.setValue(ijk, .9 );
+//                                 }
+         
+                               
+//                                 // acc_strength.setValue(ijk, float( interp_param_to_pixel(0) ));
+//                             }
+//                             else if ( u_dist < line_w && w_dist < line_w )
+//                             {
+//                                 acc_r.setValue(ijk, .0 );
+//                                 acc_g.setValue(ijk, .6 );
+//                                 acc_b.setValue(ijk, 0. );
+
+//                                 acc_strength.setValue(ijk, unit_v);
+
+//                                 param2world[1] = 0.;
+
+//                                 if ( param2world.norm() < line_w )
+//                                 {
+//                                     acc_smoke_density.setValue(ijk, 1.);
+//                                     acc_smoke_r.setValue(ijk, .9 );
+//                                     acc_smoke_g.setValue(ijk, 1. );
+//                                     acc_smoke_b.setValue(ijk, .9 );
+//                                 }
+
+
+
+//                             }
+//                             else if ( u_dist < line_w && v_dist < line_w )
+//                             {
+//                                 acc_r.setValue(ijk, .0 );
+//                                 acc_g.setValue(ijk, .0 );
+//                                 acc_b.setValue(ijk, .6 );
+
+//                                 acc_strength.setValue(ijk, unit_w);
+
+//                                 param2world[2] = 0.;
+
+//                                 if ( param2world.norm() < line_w )
+//                                 {
+//                                     acc_smoke_density.setValue(ijk, 1.);
+//                                     acc_smoke_r.setValue(ijk, .9 );
+//                                     acc_smoke_g.setValue(ijk, .9 );
+//                                     acc_smoke_b.setValue(ijk, 1.0 );
+//                                 }
+
+
+//                             }
+
+
+//                         }
 
 
 ///////////////////////////////////////////////////////
@@ -803,9 +941,9 @@ void stampParamView(SceneInfo sc)
 
                             if (u_dist > border_w && v_dist > border_w && w_dist > border_w)
                             {
-                                acc_smoke_r.setValue(ijk, 0.85 );
-                                acc_smoke_g.setValue(ijk, 0.85  );
-                                acc_smoke_b.setValue(ijk, 0.85  );
+                                acc_smoke_r.setValue(ijk, 0.95 );
+                                acc_smoke_g.setValue(ijk, 0.95  );
+                                acc_smoke_b.setValue(ijk, 0.95  );
                                 acc_smoke_density.setValue(ijk, .2 );
 
                                 acc_r.setValue(ijk, .75 );
@@ -867,7 +1005,7 @@ void stampParamView(SceneInfo sc)
                                 acc_smoke_r.setValue(ijk, 0.5 );
                                 acc_smoke_g.setValue(ijk, .9  );
                                 acc_smoke_b.setValue(ijk, .9  );
-                                acc_smoke_density.setValue(ijk, .1 );
+                                acc_smoke_density.setValue(ijk, .01 );
                             }
                             else if ( u_dist > border_w && 
                                       v_dist > border_w - shell_thick && 
@@ -881,7 +1019,7 @@ void stampParamView(SceneInfo sc)
                                 acc_smoke_r.setValue(ijk, .9 );
                                 acc_smoke_g.setValue(ijk, 0.5 );
                                 acc_smoke_b.setValue(ijk, .9  );
-                                acc_smoke_density.setValue(ijk, .1 );
+                                acc_smoke_density.setValue(ijk, .01 );
                             }
                             else if ( u_dist > border_w && 
                                       v_dist > border_w && 
@@ -895,7 +1033,7 @@ void stampParamView(SceneInfo sc)
                                 acc_smoke_r.setValue(ijk, .9 );
                                 acc_smoke_g.setValue(ijk, .9  );
                                 acc_smoke_b.setValue(ijk, .5  );
-                                acc_smoke_density.setValue(ijk, .1 );
+                                acc_smoke_density.setValue(ijk, .01 );
                             }
 
 

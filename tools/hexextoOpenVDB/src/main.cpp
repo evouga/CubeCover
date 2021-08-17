@@ -18,7 +18,8 @@
 
 #include "../../singularityviewer/src/SingularCurveNetwork.h"
 #include "FrameField.h"
-
+#include "ReadFrameField.h"
+#include "readMeshFixed.h"
 
 
 
@@ -67,7 +68,7 @@ int main(int argc, char *argv[])
 
 
 // Config settings.  
-    double cells = 4.;
+    double cells = 3.9;
     // double cell_res = 64.;
     double cell_res = 8.;
     double sample_res = cells * cell_res;  // target_cells * res_per_cell 
@@ -75,7 +76,7 @@ int main(int argc, char *argv[])
     double border_w = .2; // 
     // double cosmic_background = 0.0000; // this is the glow of the parameterisation.   Try setting to like .04
     // embedding cur_embed = embedding::PARAM_SPACE;  // PARAM_SPACE
-     embedding cur_embed = embedding::WORLD_SPACE;  // PARAM_S
+     embedding cur_embed = embedding::PARAM_SPACE;  // PARAM_S
 
 
 
@@ -103,6 +104,9 @@ int main(int argc, char *argv[])
   //  std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/sphere_r0.17.hexex";
     std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid_int.hexex";
     std::string permfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid.perm";
+    std::string meshfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid.mesh";
+    std::string frafile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid.fra";
+
 
     SceneInfo sc(hexexfile, sample_res);
 
@@ -131,6 +135,19 @@ int main(int argc, char *argv[])
     int nverts = sc.V.rows();
 	Eigen::MatrixXd P_viztets(4 * ntets, 3);
 	Eigen::MatrixXi E_viztets(6 * ntets, 2);
+
+    //     Eigen::MatrixXi F;
+    // if (!CubeCover::readMESH(meshfile, sc.V, sc.T, F))
+    //     return -1;
+
+    Eigen::MatrixXd frames;
+    Eigen::MatrixXi assignments;
+    if (!CubeCover::readFrameField(frafile, permfile, sc.T, frames, assignments, true))
+        return -1;
+
+    CubeCover::TetMeshConnectivity mesh(sc.T);
+    
+    CubeCover::FrameField* field = CubeCover::fromFramesAndAssignments(mesh, frames, assignments, true);
 
 
 
@@ -214,8 +231,11 @@ int main(int argc, char *argv[])
 
 
     // stampParamView(sc);
+
+
+
     stampScalarView(sc);
-    stampParamView(sc);
+    // stampParamView(sc);
     
 
 
