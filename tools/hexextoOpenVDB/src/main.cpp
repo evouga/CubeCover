@@ -72,8 +72,8 @@ int main(int argc, char *argv[])
     // double cell_res = 64.;
     double cell_res = 8.;
     double sample_res = cells * cell_res;  // target_cells * res_per_cell 
-    double line_w = .05;
-    double border_w = .2; // 
+    // double line_w = .05;
+    // double border_w = .2; // 
     // double cosmic_background = 0.0000; // this is the glow of the parameterisation.   Try setting to like .04
     // embedding cur_embed = embedding::PARAM_SPACE;  // PARAM_SPACE
      embedding cur_embed = embedding::PARAM_SPACE;  // PARAM_S
@@ -102,10 +102,28 @@ int main(int argc, char *argv[])
     // std::string hexexfile = "~/Documents/MATLAB/integrable-frames-3d/output_frames_dir/notch5_500.hexex";
      // std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/notch5_500.hexex";
   //  std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/sphere_r0.17.hexex";
-    std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid_int.hexex";
-    std::string permfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid.perm";
-    std::string meshfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid.mesh";
-    std::string frafile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid.fra";
+
+
+    // std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid_int.hexex";
+    // // std::string permfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid.perm";
+    // std::string meshfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid.mesh";
+    // std::string frafile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/triangular_bipyramid.fra";
+
+    // std::string file_slug = "umbillic_torus_4kT";
+    // std::string file_slug = "tetrahedron_2600_tets";
+    std::string file_slug = "menger1_400";
+
+    std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + "_int.hexex";
+    // std::string permfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + ".perm";
+    std::string meshfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + ".mesh";
+    std::string frafile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + ".fra";
+
+
+    //     std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + "_subd_int.hexex";
+    // // std::string permfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + ".perm";
+    // std::string meshfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + "_subd.mesh";
+    // std::string frafile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + "_subd.fra";
+
 
 
     SceneInfo sc(hexexfile, sample_res);
@@ -114,7 +132,7 @@ int main(int argc, char *argv[])
     sc.cells = cells;
     sc.V_curr = cur_embed; 
     sc.stamp_grid = true;
-    sc.stamp_centers = true;
+    sc.stamp_centers = false;
 
 
     // just in case for debugging.
@@ -140,16 +158,27 @@ int main(int argc, char *argv[])
     // if (!CubeCover::readMESH(meshfile, sc.V, sc.T, F))
     //     return -1;
 
-    Eigen::MatrixXd frames;
-    Eigen::MatrixXi assignments;
-    if (!CubeCover::readFrameField(frafile, permfile, sc.T, frames, assignments, true))
-        return -1;
+    // Eigen::MatrixXd frames;
+    // Eigen::MatrixXi assignments;
+    // if (!CubeCover::readFrameField(frafile, permfile, sc.T, frames, assignments, true))
+    //     return -1;
 
-    CubeCover::TetMeshConnectivity mesh(sc.T);
+    // CubeCover::TetMeshConnectivity mesh(sc.T);
     
-    CubeCover::FrameField* field = CubeCover::fromFramesAndAssignments(mesh, frames, assignments, true);
+    // CubeCover::FrameField* field = CubeCover::fromFramesAndAssignments(mesh, frames, assignments, true);
 
+    // field->computeLocalAssignments();
+    // std::cout << "found " << field->nSingularEdges() << " singular edges" << std::endl;
+    
+    // field->combAssignments();
 
+    // Eigen::MatrixXd Pblack;
+    // Eigen::MatrixXi Eblack;
+    // Eigen::MatrixXd Pblue;
+    // Eigen::MatrixXi Eblue;
+    // Eigen::MatrixXd Pgreen;
+    // Eigen::MatrixXi Egreen;
+    // extractSingularCurveNetwork(sc.V, mesh, *field, Pgreen, Egreen, Pblue, Eblue, Pblack, Eblack);
 
  
 
@@ -234,9 +263,9 @@ int main(int argc, char *argv[])
 
 
 
-    stampScalarView(sc);
-    // stampParamView(sc);
-    
+ //   stampScalarView(sc);
+    stampParamView(sc);
+//    stampSurfaceView(sc, mesh, field);
 
 
 // Show vertex positions

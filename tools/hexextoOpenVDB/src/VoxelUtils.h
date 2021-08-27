@@ -8,6 +8,10 @@
 #include "ReadHexEx.h"
 
 #include "SceneInfo.h"
+#include "FrameField.h"
+
+
+#include "TetMeshConnectivity.h"
 
 class SceneInfo;
 
@@ -28,6 +32,10 @@ void stampParamView(SceneInfo info);
 // void stampLatticeView(SceneInfo info);
 
 void stampScalarView(SceneInfo info);
+
+void stampSurfaceView(SceneInfo info, CubeCover::TetMeshConnectivity mesh, CubeCover::FrameField* field);
+
+// void stampTrimeshView(SceneInfo info, CubeCover::TetMeshConnectivity mesh);
 
 void stampSingularCurve(SceneInfo info);
 void stampBranchCuts(SceneInfo info);
