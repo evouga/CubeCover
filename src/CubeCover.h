@@ -13,7 +13,7 @@ namespace CubeCover
             parameterizationType(ParameterizationType::PT_SEAMLESS),
             assignmentHandling(AssignmentHandling::AH_USEPROVIDED),
             boundaryConditions(BoundaryConditions::BC_FREE),
-            MIPtol(1e-6),
+            MIPtol(1e-4),  // HACK SHOULD SET BACK TO 1e-6
             scale(1.0),
             verbose(false)
         {}

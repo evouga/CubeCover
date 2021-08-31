@@ -147,17 +147,17 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
 
                                 if (M.determinant() == 0)
                                 {
-                                    std::cout << "zero volume" <<std::endl;
-                                    Segment s;
-                                    s.end1 = V.row( mesh.tetVertex(i, vert1) );
-                                    s.end2 = V.row( mesh.tetVertex(i, vert2) );;
-                                    segs2.push_back(s);
-                                    s.end1 = V.row( mesh.tetVertex(i, vert2) );
-                                    s.end2 = V.row( mesh.tetVertex(i, vert3) );;
-                                    segs2.push_back(s);
-                                    s.end1 = V.row( mesh.tetVertex(i, vert1) );
-                                    s.end2 = V.row( mesh.tetVertex(i, vert3) );;
-                                    segs2.push_back(s);
+                                    // std::cout << "zero volume" <<std::endl;
+                                    // Segment s;
+                                    // s.end1 = V.row( mesh.tetVertex(i, vert1) );
+                                    // s.end2 = V.row( mesh.tetVertex(i, vert2) );;
+                                    // segs2.push_back(s);
+                                    // s.end1 = V.row( mesh.tetVertex(i, vert2) );
+                                    // s.end2 = V.row( mesh.tetVertex(i, vert3) );;
+                                    // segs2.push_back(s);
+                                    // s.end1 = V.row( mesh.tetVertex(i, vert1) );
+                                    // s.end2 = V.row( mesh.tetVertex(i, vert3) );;
+                                    // segs2.push_back(s);
                                     continue;
                                 }
 

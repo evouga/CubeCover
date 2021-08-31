@@ -932,7 +932,7 @@ void stampParamView(SceneInfo sc)
                                 {
                                     if ( pIsIn )
                                     {
-                                        tetIsActive = true;
+                                        // tetIsActive = true;
                                         acc_r.setValue(ijk, .6 );
                                         acc_g.setValue(ijk, .0 );
                                         acc_b.setValue(ijk, 0. );

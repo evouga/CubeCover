@@ -68,15 +68,15 @@ int main(int argc, char *argv[])
 
 
 // Config settings.  
-    double cells = 3.9;
+    double cells = 4.;
     // double cell_res = 64.;
-    double cell_res = 8.;
+    double cell_res = 16.;
     double sample_res = cells * cell_res;  // target_cells * res_per_cell 
     // double line_w = .05;
     // double border_w = .2; // 
     // double cosmic_background = 0.0000; // this is the glow of the parameterisation.   Try setting to like .04
     // embedding cur_embed = embedding::PARAM_SPACE;  // PARAM_SPACE
-     embedding cur_embed = embedding::PARAM_SPACE;  // PARAM_S
+     embedding cur_embed = embedding::WORLD_SPACE;  // PARAM_S
 
 
 
@@ -111,7 +111,8 @@ int main(int argc, char *argv[])
 
     // std::string file_slug = "umbillic_torus_4kT";
     // std::string file_slug = "tetrahedron_2600_tets";
-    std::string file_slug = "menger1_400";
+    // std::string file_slug = "menger1_400";
+    std::string file_slug = "disk_3480_tets";
 
     std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + "_int.hexex";
     // std::string permfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + ".perm";
