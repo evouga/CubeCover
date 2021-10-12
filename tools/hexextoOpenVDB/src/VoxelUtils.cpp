@@ -937,9 +937,9 @@ void stampParamView(SceneInfo sc)
                                         acc_g.setValue(ijk, .0 );
                                         acc_b.setValue(ijk, 0. );
 
-                                        acc_r.setValue(ijk, .0 );
-                                        acc_g.setValue(ijk, .0 );
-                                        acc_b.setValue(ijk, 0.6 );
+                                        // acc_r.setValue(ijk, .0 );
+                                        // acc_g.setValue(ijk, .0 );
+                                        // acc_b.setValue(ijk, 0.6 );
                                     // // acc_strength.setValue(ijk, unit_u);
                                     //     acc_strength.setValue(ijk, .5);
 
@@ -996,14 +996,14 @@ void stampParamView(SceneInfo sc)
                                     //     textureCoordinate = paramPoint; 
                                     //     std::cout << " tex_coord " << textureCoordinate.transpose() << std::endl;
                                     // }
-                                    // // else if ( acc_r.getValue(ijk) < .5 )
-                                    // // {
-                                    // //     // acc_r.setValue(ijk, .0 );
-                                    // //     // acc_g.setValue(ijk, .0 );
-                                    // //     acc_b.setValue(ijk, 0.6 );
-                                    // // // acc_strength.setValue(ijk, unit_u);
-                                    // //     acc_strength.setValue(ijk, .9);
-                                    // // }
+                                    else if ( acc_r.getValue(ijk) < .5 )
+                                    {
+                                        // acc_r.setValue(ijk, .0 );
+                                        // acc_g.setValue(ijk, .0 );
+                                        acc_b.setValue(ijk, 0.6 );
+                                    // acc_strength.setValue(ijk, unit_u);
+                                        acc_strength.setValue(ijk, .05);
+                                    }
 
                                     if ( roundedWorld.norm() < world_line_w )
                                     {
