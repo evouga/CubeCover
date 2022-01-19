@@ -15,6 +15,7 @@ namespace CubeCover
             boundaryConditions(BoundaryConditions::BC_FREE),
             MIPtol(1e-4),  // HACK SHOULD SET BACK TO 1e-6
             scale(1.0),
+            curlCorrection(0.0),
             verbose(false)
         {}
 
@@ -89,6 +90,18 @@ namespace CubeCover
          * integer isosurfaces) in the parameterization.
          */
         double scale;
+
+        /*
+         * If curlCorrection isn't zero, as a preprocessing step the frame
+         * field will be corrected to make the field locally integrable.
+         *
+         * curlCorrection is the maximum magnitude of the curl correction, 
+         * relative to the input frame field. In other words, finds delta
+         * satisfying min_delta ||delta||^2 s.t. curl(F + delta) = 0, and then
+         * updates F <- F + s delta, where
+         * s = min(1, maxCorrection ||F_i|| / ||delta_i||).
+         */
+        double curlCorrection;
 
         bool verbose;
     };

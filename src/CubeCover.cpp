@@ -2,6 +2,7 @@
 #include "TetMeshConnectivity.h"
 #include "FrameField.h"
 #include "Integration.h"
+#include "CurlCorrection.h"
 #include <iostream>
 
 namespace CubeCover
@@ -43,6 +44,11 @@ namespace CubeCover
 
         if (!field)
             return false;
+
+        if (opt.curlCorrection)
+        {
+            curlCorrect(V, *field, opt.curlCorrection);
+        }
 
         if (!integrate(V, *field, parameterization, opt.scale, opt.MIPtol, opt.parameterizationType,
             opt.boundaryConditions == CubeCoverOptions::BoundaryConditions::BC_FORCEINTEGER, opt.verbose))

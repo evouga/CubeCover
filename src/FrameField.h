@@ -71,6 +71,7 @@ namespace CubeCover {
 
         const AssignmentGroup& faceAssignment(int faceid) const { return faceperms[faceid]; }
         const Eigen::MatrixXd& tetFrame(int tetid) const { return frames[tetid]; }
+        void setFrame(int tetid, const Eigen::MatrixXd& newFrame) { frames[tetid] = newFrame; }
 
     private:
         const TetMeshConnectivity& mesh;

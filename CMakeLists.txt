@@ -11,7 +11,7 @@ endif()
 set(BUILD_SINGULARITY_VIEWER ON CACHE BOOL "Build Singularity Viewer")
 set(BUILD_ISOLINE_VIEWER ON CACHE BOOL "Build Isoline Viewer")
 set(BUILD_BINARIES ON CACHE BOOL "Build Command-line Binaries")
-set(BUILD_VIZ_TOOLS ON CACHE BOOL "Build Stuff for Volume Rendering")
+set(BUILD_VIZ_TOOLS OFF CACHE BOOL "Build Stuff for Volume Rendering")
 
 # Find Eigen
 find_package(Eigen3 3.3 REQUIRED)
