@@ -7,7 +7,7 @@ class FrameField;
 
 namespace CubeCover
 {
-    void curlCorrect(const Eigen::MatrixXd& V, FrameField& field, double maxCorrection);
+    void curlCorrect(const Eigen::MatrixXd& V, FrameField& field, double maxCorrection, bool verbose);
 };
 
 #endif

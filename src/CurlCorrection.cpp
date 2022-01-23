@@ -3,6 +3,7 @@
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
 #include "TetMeshConnectivity.h"
+#include <iostream>
 
 namespace CubeCover {
 
@@ -53,7 +54,7 @@ namespace CubeCover {
     }
 
 
-    void curlCorrect(const Eigen::MatrixXd& V, FrameField& field, double maxCorrection)
+    void curlCorrect(const Eigen::MatrixXd& V, FrameField& field, double maxCorrection, bool verbose)
     {
         int vpf = field.vectorsPerFrame();
         int ntets = field.meshConnectivity().nTets();
@@ -80,17 +81,37 @@ namespace CubeCover {
         Reg.setFromTriplets(regCoeffs.begin(), regCoeffs.end());
         Eigen::SparseMatrix<double> Mat = Reg + C * C.transpose();
         Eigen::VectorXd rhs = C * unrolled;
+
+        if (verbose)
+        {
+            std::cout << "Curl residual before: " << (C * unrolled).norm() << std::endl;
+        }
+
         Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > solver(Mat);
         Eigen::VectorXd lambda = solver.solve(rhs);
+
+        if (verbose)
+        {
+            std::cout << "Curl correction solver residual: " << (Mat * lambda - rhs).norm() << std::endl;
+        }
+
         Eigen::VectorXd delta = -C.transpose() * lambda;
+        double maxmult = 0;
         for (int i = 0; i < ntets; i++)
         {
             Eigen::VectorXd frame = unrolled.segment(3 * vpf * i, 3 * vpf);
             double fnorm = frame.norm();
-            Eigen::VectorXd framelambda = lambda.segment(3 * vpf * i, 3 * vpf);
-            double lambdanorm = framelambda.norm();
-            double mult = std::min(1.0, maxCorrection * fnorm / lambdanorm);
-            unrolled.segment(3 * vpf * i, 3 * vpf) += mult * framelambda;
+            Eigen::VectorXd framedelta = delta.segment(3 * vpf * i, 3 * vpf);
+            double deltanorm = framedelta.norm();
+            double mult = std::min(1.0, maxCorrection * fnorm / deltanorm);
+            maxmult = std::max(maxmult, deltanorm / fnorm);
+            unrolled.segment(3 * vpf * i, 3 * vpf) += mult * framedelta;
+        }
+
+        if (verbose)
+        {
+            std::cout << "Maximum correction magnitude was: " << maxmult << std::endl;
+            std::cout << "Curl residual after: " << (C * unrolled).norm() << std::endl;
         }
 
         for (int i = 0; i < ntets; i++)

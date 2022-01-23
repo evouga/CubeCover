@@ -47,6 +47,10 @@ int main(int argc, char* argv[])
     opt.parameterizationType = CubeCover::CubeCoverOptions::ParameterizationType::PT_INTEGERGRID;
     opt.assignmentHandling = (argc == 5 ? CubeCover::CubeCoverOptions::AssignmentHandling::AH_USEPROVIDED : CubeCover::CubeCoverOptions::AssignmentHandling::AH_RECOMPUTE);    
     opt.boundaryConditions = CubeCover::CubeCoverOptions::BoundaryConditions::BC_FORCEINTEGER;
+
+    // set to something non-zero if you want curl-correction. 1.0 == 100% change in the input frames allowed.
+    opt.curlCorrection = 0.0;
+
     opt.verbose = true;
     Eigen::MatrixXd values;
     if (!CubeCover::cubeCover(V, T, frames, assignments, values, opt))

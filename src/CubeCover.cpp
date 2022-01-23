@@ -47,7 +47,7 @@ namespace CubeCover
 
         if (opt.curlCorrection)
         {
-            curlCorrect(V, *field, opt.curlCorrection);
+            curlCorrect(V, *field, opt.curlCorrection, opt.verbose);
         }
 
         if (!integrate(V, *field, parameterization, opt.scale, opt.MIPtol, opt.parameterizationType,
