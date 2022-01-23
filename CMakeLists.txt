@@ -13,8 +13,12 @@ set(BUILD_ISOLINE_VIEWER ON CACHE BOOL "Build Isoline Viewer")
 set(BUILD_BINARIES ON CACHE BOOL "Build Command-line Binaries")
 set(BUILD_VIZ_TOOLS OFF CACHE BOOL "Build Stuff for Volume Rendering")
 
-# Find Eigen
-find_package(Eigen3 3.3 REQUIRED)
+set(USE_GUROBI ON CACHE BOOL "Use Gurobi for solving MIPs")
+set(USE_COMISO ON CACHE BOOL "Use Comiso for solving MIPs")
+
+# Libigl
+set(LIBIGL_WITH_COMISO $CACHE{USE_COMISO} CACHE BOOL "Build LIBIGL with CoMISo" FORCE)
+include(libigl)
 
 if(BUILD_SINGULARITY_VIEWER OR BUILD_ISOLINE_VIEWER)
   # Find Polyscope
@@ -24,24 +28,34 @@ endif()
 if(BUILD_VIZ_TOOLS)
   list(APPEND CMAKE_MODULE_PATH "/usr/local/lib/cmake/OpenVDB")
   find_package(OpenVDB REQUIRED)
-endif()
+  endif()
 
-# use gurobi
-find_package(GUROBI)
-if(NOT GUROBI_FOUND)
-  message(SEND_ERROR "Unable to find Gurobi. Make sure that the env GUROBI_HOME is set")
-else()
-  message("Found Gurobi in : " ${GUROBI_INCLUDE_DIRS})
-  message("Found Gurobi cxx lib in : " ${GUROBI_CXX_LIBRARY})
-  message("Found Gurobi lib in : " ${GUROBI_LIBRARY})
-  include_directories(${GUROBI_INCLUDE_DIRS})
+if(USE_GUROBI)   
+    # use gurobi
+    find_package(GUROBI)
+    if(NOT GUROBI_FOUND)
+      message(SEND_ERROR "Unable to find Gurobi. Make sure that the env GUROBI_HOME is set")
+    else()
+      message("Found Gurobi in : " ${GUROBI_INCLUDE_DIRS})
+      message("Found Gurobi cxx lib in : " ${GUROBI_CXX_LIBRARY})
+      message("Found Gurobi lib in : " ${GUROBI_LIBRARY})
+      include_directories(${GUROBI_INCLUDE_DIRS})
+    endif()
 endif()
 
 file(GLOB SRCFILES src/*.cpp src/*.h src/*.hpp)	  
 
 add_library(${PROJECT_NAME} ${SRCFILES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${EIGEN3_INCLUDE_DIR})
-target_link_libraries(${PROJECT_NAME} ${GUROBI_CXX_LIBRARY} ${GUROBI_LIBRARY})
+target_link_libraries(${PROJECT_NAME} igl::core)
+if(USE_COMISO)
+    target_link_libraries(${PROJECT_NAME} igl::comiso)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC HAS_COMISO)
+endif()
+if(USE_GUROBI)
+    target_link_libraries(${PROJECT_NAME} ${GUROBI_CXX_LIBRARY} ${GUROBI_LIBRARY} )
+    target_compile_definitions(${PROJECT_NAME} PUBLIC HAS_GUROBI)
+endif()
 
 # Use C++14
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 14)

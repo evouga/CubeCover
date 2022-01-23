@@ -50,8 +50,7 @@ namespace CubeCover
             curlCorrect(V, *field, opt.curlCorrection, opt.verbose);
         }
 
-        if (!integrate(V, *field, parameterization, opt.scale, opt.MIPtol, opt.parameterizationType,
-            opt.boundaryConditions == CubeCoverOptions::BoundaryConditions::BC_FORCEINTEGER, opt.verbose))
+        if (!integrate(V, *field, parameterization, opt))
         {
             delete field;
             return false;

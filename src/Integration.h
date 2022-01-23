@@ -17,8 +17,7 @@ namespace CubeCover {
      * using the Gurobi MIP solver.
      * Optionally also enforces integer-grid and boundary alignment constraints.
      */
-    bool integrate(const Eigen::MatrixXd& V, const FrameField& field, Eigen::MatrixXd& soupValues, double scale, 
-        double MIPtol, CubeCoverOptions::ParameterizationType type, bool forceBoundaryAlignment, bool verbose);
+    bool integrate(const Eigen::MatrixXd& V, const FrameField& field, Eigen::MatrixXd& soupValues, const CubeCoverOptions &options);
 
 };
 

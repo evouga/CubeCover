@@ -13,7 +13,8 @@ namespace CubeCover
             parameterizationType(ParameterizationType::PT_SEAMLESS),
             assignmentHandling(AssignmentHandling::AH_USEPROVIDED),
             boundaryConditions(BoundaryConditions::BC_FREE),
-            MIPtol(1e-4),  // HACK SHOULD SET BACK TO 1e-6
+            solver(MIPSolver::MS_GUROBI),
+            MIPtol(1e-6),
             scale(1.0),
             curlCorrection(0.0),
             verbose(false)
@@ -78,6 +79,21 @@ namespace CubeCover
             BC_FREE,
             BC_FORCEINTEGER
         } boundaryConditions;
+
+        /*
+         * Which library to use to solve the mixed-integer problem that arises
+         * during parameterization.
+         * MS_GUROBI: the Gurobi library, which will (at great expense) attempt
+         *            to find an exact solution using branch-and-bound.
+         * MS_COMISO: the CoMISo library, which uses rounding heuristics to
+         *            find an approximate solution quickly.
+         * You must enable to library you wish to use in the CMake options.
+         */
+        enum struct MIPSolver
+        {
+            MS_GUROBI,
+            MS_COMISO
+        } solver;
 
         /*
          * Convergence tolerance passed to the MIP solver.

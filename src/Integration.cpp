@@ -1,5 +1,5 @@
 #include "Integration.h"
-#include "GurobiMIPWrapper.h"
+#include "MIPWrapper.h"
 #include <iostream>
 #include "CutToSimplyConnected.h"
 #include "TetMeshConnectivity.h"
@@ -88,9 +88,10 @@ namespace CubeCover {
     };
 
 
-    bool integrate(const Eigen::MatrixXd& V, const FrameField& field, Eigen::MatrixXd& soupValues, double scale, 
-        double MIPtol, CubeCoverOptions::ParameterizationType type, bool forceBoundaryAlignment, bool verbose)
+    bool integrate(const Eigen::MatrixXd& V, const FrameField& field, Eigen::MatrixXd& soupValues, const CubeCoverOptions &opt)
     {
+        bool verbose = opt.verbose;
+
         if (verbose)
         {
             std::cout << "Cutting to a simply-connected domain..." << std::endl;
@@ -154,7 +155,7 @@ namespace CubeCover {
         }
 
         // boundary faces must lie on the same integer plane if alignment is on
-        if (forceBoundaryAlignment)
+        if (opt.boundaryConditions == CubeCoverOptions::BoundaryConditions::BC_FORCEINTEGER)
         {
             for (int i = 0; i < mesh.nFaces(); i++)
             {
@@ -193,7 +194,7 @@ namespace CubeCover {
 
         std::set<int> singularcurvesoupdofs;
 
-        if (type == CubeCoverOptions::ParameterizationType::PT_INTEGERGRID)
+        if (opt.parameterizationType == CubeCoverOptions::ParameterizationType::PT_INTEGERGRID)
         {
             int nsingedges = field.nSingularEdges();
             for (int i = 0; i < nsingedges; i++)
@@ -427,6 +428,8 @@ namespace CubeCover {
             }
         }
 
+        bool forceBoundaryAlignment = (opt.boundaryConditions == CubeCoverOptions::BoundaryConditions::BC_FORCEINTEGER);
+
         for (int i = 0; i < mesh.nFaces(); i++)
         {            
             if (mesh.isBoundaryFace(i) && forceBoundaryAlignment)
@@ -458,7 +461,7 @@ namespace CubeCover {
             }            
         }
 
-        if (type == CubeCoverOptions::ParameterizationType::PT_INTEGERGRID)
+        if (opt.parameterizationType == CubeCoverOptions::ParameterizationType::PT_INTEGERGRID)
         {
             for (auto it : singularcurvesoupdofs)
             {
@@ -546,7 +549,7 @@ namespace CubeCover {
             {
                 for (int l = 0; l < vpf; l++)
                 {
-                    rhs[3 * vpf * i + 3 * l + k] = scale * field.tetFrame(i)(l, k);
+                    rhs[3 * vpf * i + 3 * l + k] = opt.scale * field.tetFrame(i)(l, k);
                 }
             }
         }
@@ -581,7 +584,7 @@ namespace CubeCover {
         Eigen::VectorXd result;
         std::vector<int> intdofs;
         
-        if (type == CubeCoverOptions::ParameterizationType::PT_SEAMLESS)
+        if (opt.parameterizationType == CubeCoverOptions::ParameterizationType::PT_SEAMLESS)
         {            
             for (int i = 0; i < jumpdofs; i++)
             {
@@ -593,7 +596,7 @@ namespace CubeCover {
             intdofs.push_back(it);
         }
 
-        if (!GurobiMIPWrapper(C, MIPA, result, MIPrhs, intdofs, 1e-6, verbose))
+        if (!MIP(C, MIPA, result, MIPrhs, intdofs, opt))
         {
             if (verbose)
             {
