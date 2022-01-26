@@ -7,9 +7,10 @@
 
 namespace CubeCover {
 
-    static void buildCurlMatrix(int vpf, const Eigen::MatrixXd& V, const TetMeshConnectivity& mesh, Eigen::SparseMatrix<double> &C)
+    static void buildCurlMatrix(int vpf, const Eigen::MatrixXd& V, const FrameField &field, Eigen::SparseMatrix<double> &C)
     {
         std::vector<Eigen::Triplet<double> > Ccoeffs;
+        const TetMeshConnectivity& mesh = field.meshConnectivity();
 
         int nfaces = mesh.nFaces();
         int row = 0;
@@ -35,14 +36,18 @@ namespace CubeCover {
             n.normalize();
 
             Eigen::Matrix3d P = Eigen::Matrix3d::Identity() - n * n.transpose();
+            AssignmentGroup o = field.faceAssignment(i);
+            
             for (int j = 0; j < vpf; j++)
             {
                 for (int k = 0; k < 3; k++)
                 {
                     for (int l = 0; l < 3; l++)
-                    {
+                    {                        
                         Ccoeffs.push_back({ row + 3 * j + k, 3 * vpf * t0 + 3 * j + l, P(k,l) });
-                        Ccoeffs.push_back({ row + 3 * j + k, 3 * vpf * t1 + 3 * j + l, -P(k,l) });
+                        int targetidx = o.targetVector(l);
+                        double targetsign = o.targetSign(l);
+                        Ccoeffs.push_back({ row + 3 * j + k, 3 * vpf * t1 + 3 * j + l, -targetsign * P(k,targetidx) });
                     }
                 }
             }
@@ -68,7 +73,7 @@ namespace CubeCover {
         }
         
         Eigen::SparseMatrix<double> C;
-        buildCurlMatrix(field.vectorsPerFrame(), V, field.meshConnectivity(), C);
+        buildCurlMatrix(field.vectorsPerFrame(), V, field, C);
         
         int nconstraints = C.rows();
         std::vector<Eigen::Triplet<double> > regCoeffs;
