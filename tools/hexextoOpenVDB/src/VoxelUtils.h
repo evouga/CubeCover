@@ -31,7 +31,7 @@ void stampParamView(SceneInfo info);
 
 // void stampLatticeView(SceneInfo info);
 
-void stampScalarView(SceneInfo info);
+void stampCurlView(SceneInfo info);
 
 void stampSurfaceView(SceneInfo info, CubeCover::TetMeshConnectivity mesh, CubeCover::FrameField* field);
 

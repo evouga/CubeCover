@@ -7,7 +7,7 @@
 
 namespace CubeCover {
 
-    static void buildCurlMatrix(int vpf, const Eigen::MatrixXd& V, const FrameField &field, Eigen::SparseMatrix<double> &C)
+    void buildCurlMatrix(int vpf, const Eigen::MatrixXd& V, const FrameField &field, Eigen::SparseMatrix<double> &C)
     {
         std::vector<Eigen::Triplet<double> > Ccoeffs;
         const TetMeshConnectivity& mesh = field.meshConnectivity();
