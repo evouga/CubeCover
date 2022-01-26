@@ -44,10 +44,10 @@ namespace CubeCover {
                 {
                     for (int l = 0; l < 3; l++)
                     {                        
+                        int targetidx = o.targetVector(j);
+                        double targetsign = o.targetSign(j);                        
                         Ccoeffs.push_back({ row + 3 * j + k, 3 * vpf * t0 + 3 * j + l, P(k,l) });
-                        int targetidx = o.targetVector(l);
-                        double targetsign = o.targetSign(l);
-                        Ccoeffs.push_back({ row + 3 * j + k, 3 * vpf * t1 + 3 * j + l, -targetsign * P(k,targetidx) });
+                        Ccoeffs.push_back({ row + 3 * j + k, 3 * vpf * t1 + 3 * targetidx + l, - targetsign * P(k,l) });
                     }
                 }
             }
@@ -68,7 +68,7 @@ namespace CubeCover {
         {
             for (int j = 0; j < vpf; j++)
             {
-                unrolled.segment<3>(3 * vpf * i + 3 * j) = field.tetFrame(i).col(j);
+                unrolled.segment<3>(3 * vpf * i + 3 * j) = field.tetFrame(i).row(j).transpose();
             }
         }
         
@@ -121,10 +121,10 @@ namespace CubeCover {
 
         for (int i = 0; i < ntets; i++)
         {
-            Eigen::MatrixXd newframe(3, vpf);
+            Eigen::MatrixXd newframe(vpf, 3);
             for (int j = 0; j < vpf; j++)
             {                
-                newframe.col(j) = unrolled.segment<3>(3 * vpf * i + 3 * j);
+                newframe.row(j) = unrolled.segment<3>(3 * vpf * i + 3 * j).transpose();
             }
             field.setFrame(i, newframe);
         }

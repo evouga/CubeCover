@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
     
 //     }
 
-    buildCurlMatrix(vpf,  V, mesh, C);
+    buildCurlMatrix(vpf,  V, *field, C);
     
 
     int ntets = field->meshConnectivity().nTets();
@@ -245,11 +245,11 @@ int main(int argc, char *argv[])
     {
         for (int j = 0; j < vpf; j++)
         {
-            unrolled.segment<3>(3 * vpf * i + 3 * j) = field->tetFrame(i).col(j);
+            unrolled.segment<3>(3 * vpf * i + 3 * j) = field->tetFrame(i).row(j);
 
             for (int k = 0; k < 3 ; k++)
             {   
-                auto blah = field->tetFrame(i).col(j);
+                auto blah = field->tetFrame(i).row(j);
                 if ( abs(blah(k)) > maxval)
                     maxval = abs(blah(k));
                 if (abs(blah(k)) < minval)
