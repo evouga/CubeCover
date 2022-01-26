@@ -67,6 +67,7 @@ install(TARGETS ${PROJECT_NAME})
 
 if(BUILD_SINGULARITY_VIEWER)
   add_subdirectory(tools/singularityviewer)
+  add_subdirectory(tools/singularityviewer_fancy)
 endif()
 
 if(BUILD_ISOLINE_VIEWER)
