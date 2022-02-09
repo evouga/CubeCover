@@ -72,6 +72,7 @@ endif()
 
 if(BUILD_ISOLINE_VIEWER)
   add_subdirectory(tools/isolineviewer)
+  add_subdirectory(tools/isolineviewer_fancy)
   add_subdirectory(tools/volumeparamviewer)
 endif()
 

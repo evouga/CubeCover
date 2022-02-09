@@ -40,8 +40,13 @@ int main(int argc, char *argv[])
     // std::string meshfile = slug + ".mesh";
     // std::string frafile = slug + ".fra";
 
-    std::string meshfile = "disk_3480_tets_gl3.mesh";
-    std::string frafile = "disk_3480_tets_gl3.fra";
+    // std::string slug = argv[1];
+
+    std::string meshfile = argv[1];
+    std::string frafile = argv[2];
+
+    // std::string meshfile = "disk_3480_tets_gl3.mesh";
+    // std::string frafile = "disk_3480_tets_gl3.fra";
 
 
     bool showViz = true;

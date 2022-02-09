@@ -1,6 +1,7 @@
 #include "FrameFieldVis.h"
 #include "TetMeshConnectivity.h"
 #include "FrameField.h"
+#include <iostream>
 
 void buildFrameVectors(const Eigen::MatrixXd& V,
     const CubeCover::TetMeshConnectivity& mesh,
@@ -19,6 +20,9 @@ void buildFrameVectors(const Eigen::MatrixXd& V,
         frameVectors[i].resize(ntets, 3);
     }
 
+    double min_vec = 10000;
+    double max_vec = -10000;
+
     for (int i = 0; i < ntets; i++)
     {
         Eigen::Vector3d centroid(0, 0, 0);
@@ -35,6 +39,12 @@ void buildFrameVectors(const Eigen::MatrixXd& V,
             Eigen::Vector3d vec = field.tetFrame(i).row(j).transpose();
             frameVectors[2 * j].row(i) = scale * vec.transpose();
             frameVectors[2 * j + 1].row(i) = -scale * vec.transpose();
+            if (vec.norm() < min_vec)
+                min_vec = vec.norm();
+            if (vec.norm() > max_vec)
+                max_vec = vec.norm();
         }
     }
+
+    std::cout<< "max_vec: " << max_vec << "min_vec: " << min_vec << std::endl;
 }

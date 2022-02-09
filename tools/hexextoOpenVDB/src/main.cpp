@@ -112,12 +112,13 @@ int main(int argc, char *argv[])
     // std::string file_slug = "umbillic_torus_4kT";
     // std::string file_slug = "tetrahedron_2600_tets";
     // std::string file_slug = "menger1_400";
+    std::string pathname_slug = "disk_3480_tets";
     std::string file_slug = "disk_3480_tets";
 
-    std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + "_int.hexex";
+    std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + pathname_slug + "/" + file_slug + "_int.hexex";
     // std::string permfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + ".perm";
-    std::string meshfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + ".mesh";
-    std::string frafile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + ".fra";
+    std::string meshfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + pathname_slug + "/" + file_slug + ".mesh";
+    std::string frafile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + pathname_slug + "/" + file_slug + ".fra";
 
 
     //     std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + "_subd_int.hexex";

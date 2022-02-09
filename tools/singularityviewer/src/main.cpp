@@ -170,6 +170,9 @@ int main(int argc, char *argv[])
             std::stringstream ss;
             ss << "Frame Vector " << i;
             auto *vf = tetc->addVectorQuantity(ss.str(), framefieldvecs[i]);
+            double mag = framefieldvecs[i].row(0).norm() +  framefieldvecs[i].row(1).norm() +  framefieldvecs[i].row(2).norm();
+            std::cout << mag << std::endl;
+
             vf->setVectorColor({ dist(rng),dist(rng),dist(rng) });
             vf->setVectorRadius(0.001);
             vf->setEnabled(true);
