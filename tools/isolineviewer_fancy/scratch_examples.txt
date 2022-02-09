@@ -1,0 +1,4 @@
+./tools/isolineviewer_fancy/isolineviewer_fancy cylinder3k_gl3.mesh cylinder3k_gl3.fra cylinder3k_ginzs81_subd_seamless.hexex
+
+
+./tools/isolineviewer_fancy/isolineviewer_fancy ../../MATLAB/integrable-frames-3d/output_frames_dir/fit_bad_singularity_mint_free/cylinder3k_gl3.mesh ../../MATLAB/integrable-frames-3d/output_frames_dir/fit_bad_singularity_mint_free/cylinder3k_gl3.fra ./../MATLAB/integrable-frames-3d/output_frames_dir/fit_bad_singularity_mint_free/cylinder3k_gl3.mesh_ginzs85_subd_seamless.hexex
