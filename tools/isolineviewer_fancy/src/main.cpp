@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 
 
     auto *psCurves = polyscope::registerCurveNetwork("Isolines", P, E);
-    psCurves->setRadius(0.003);
+    psCurves->setRadius(0.002);
     auto *psCurves2 = polyscope::registerCurveNetwork("Bad Isolines", P2, E2);
     psCurves2->setRadius(0.003);
     // auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", V, bdryF);
@@ -193,31 +193,86 @@ int main(int argc, char *argv[])
 
     Eigen::MatrixXd cur_points; 
     Eigen::MatrixXd points; 
+    int nfam = 6;
 
-    for (int tid = 0; tid < ntraces; tid++)
+    for (int cur_fam_id = 0; cur_fam_id < nfam; cur_fam_id++)
     {
- //       streamline_tets.clear();
-        int nsteps = traces.at(tid).points.size();
-        std::vector<Eigen::Vector2d> cur_edge;
-        for (int i = 0; i < nsteps-1; i++ )
+        int iter = 0;
+        std::vector<Eigen::Vector2d> cur_line_edges;
+        std::vector<Eigen::Vector3d> cur_points;
+
+        for (int tid = 0; tid < ntraces; tid++)
         {
-            cur_edge.push_back(Eigen::Vector2d(i, i+1) );
-        }
-        std::cout << "traceId: " << tid << "nsteps: " << nsteps << std::endl;
-        for (int i = 0; i < nsteps-1; i++ )
-        {
-            auto cur_trace = traces.at(tid);
-            int cur_tet_id = cur_trace.tetIds.at(i);
-            streamline_tets.push_back(T_mesh.row(cur_tet_id));
-            // std::cout << "cur_tet_id: " << cur_tet_id << std::endl;
-            tet_colors(cur_tet_id) = 1.;
+            int tid_fam_id = tid % nfam;
+            if (tid_fam_id == cur_fam_id)
+            {
+     //       streamline_tets.clear();
+                int nsteps = traces.at(tid).points.size();
+                
+                for (int i = 0; i < nsteps; i++ )
+                {
+                    cur_points.push_back( traces.at(tid).points.at(i) );
+                }
+
+                
+                for (int i = 0; i < nsteps-1; i++ )
+                {
+                    cur_line_edges.push_back(Eigen::Vector2d(iter, iter+1) );
+                    iter++;
+                }
+                iter++;
+                // std::cout << "traceId: " << tid << "nsteps: " << nsteps << std::endl;
+                // for (int i = 0; i < nsteps-1; i++ )
+                // {
+                //     auto cur_trace = traces.at(tid);
+                //     int cur_tet_id = cur_trace.tetIds.at(i);
+                //     streamline_tets.push_back(T_mesh.row(cur_tet_id));
+                //     // std::cout << "cur_tet_id: " << cur_tet_id << std::endl;
+                //     tet_colors(cur_tet_id) = 1.;
+                // }
+
+
+            }
+
+
+            
         }
 
-        auto *single_streamline = polyscope::registerCurveNetwork("streamline" + std::to_string(tid), traces.at(tid).points, cur_edge);
-        single_streamline->setTransparency(.7);
-        single_streamline->setRadius(0.005);
-        
+        auto *single_streamline = polyscope::registerCurveNetwork("streamline" + std::to_string(cur_fam_id), cur_points, cur_line_edges);
+        single_streamline->setTransparency(1);
+        single_streamline->setRadius(0.003);
+
+
     }
+
+
+
+ //    for (int tid = 0; tid < ntraces; tid++)
+ //    {
+ //        int fam_id = tid % 6;
+ //        cur_iter = iter_streamline(fam_id);
+ // //       streamline_tets.clear();
+ //        int nsteps = traces.at(tid).points.size();
+ //        std::vector<Eigen::Vector2d> cur_edge;
+ //        for (int i = 0; i < nsteps-1; i++ )
+ //        {
+ //            cur_edge.push_back(Eigen::Vector2d(i, i+1) );
+ //        }
+ //        std::cout << "traceId: " << tid << "nsteps: " << nsteps << std::endl;
+ //        for (int i = 0; i < nsteps-1; i++ )
+ //        {
+ //            auto cur_trace = traces.at(tid);
+ //            int cur_tet_id = cur_trace.tetIds.at(i);
+ //            streamline_tets.push_back(T_mesh.row(cur_tet_id));
+ //            // std::cout << "cur_tet_id: " << cur_tet_id << std::endl;
+ //            tet_colors(cur_tet_id) = 1.;
+ //        }
+
+ //        auto *single_streamline = polyscope::registerCurveNetwork("streamline" + std::to_string(tid), traces.at(tid).points, cur_edge);
+ //        single_streamline->setTransparency(.7);
+ //        single_streamline->setRadius(0.005);
+        
+ //    }
 
     // auto *single_streamline = polyscope::registerCurveNetwork("streamline" + std::to_string(tid), traces.at(tid).points, cur_edge);
     // single_streamline->setTransparency(.7);
@@ -271,3 +326,30 @@ int main(int argc, char *argv[])
     // visualize!
     polyscope::show();
 }
+
+
+
+ //    for (int tid = 0; tid < ntraces; tid++)
+ //    {
+ // //       streamline_tets.clear();
+ //        int nsteps = traces.at(tid).points.size();
+ //        std::vector<Eigen::Vector2d> cur_edge;
+ //        for (int i = 0; i < nsteps-1; i++ )
+ //        {
+ //            cur_edge.push_back(Eigen::Vector2d(i, i+1) );
+ //        }
+ //        std::cout << "traceId: " << tid << "nsteps: " << nsteps << std::endl;
+ //        for (int i = 0; i < nsteps-1; i++ )
+ //        {
+ //            auto cur_trace = traces.at(tid);
+ //            int cur_tet_id = cur_trace.tetIds.at(i);
+ //            streamline_tets.push_back(T_mesh.row(cur_tet_id));
+ //            // std::cout << "cur_tet_id: " << cur_tet_id << std::endl;
+ //            tet_colors(cur_tet_id) = 1.;
+ //        }
+
+ //        auto *single_streamline = polyscope::registerCurveNetwork("streamline" + std::to_string(tid), traces.at(tid).points, cur_edge);
+ //        single_streamline->setTransparency(.7);
+ //        single_streamline->setRadius(0.005);
+        
+ //    }

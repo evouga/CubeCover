@@ -18,7 +18,7 @@ static bool intersectPlane(const Eigen::Vector3d &n, const Eigen::Vector3d &p0, 
     double denom = n.dot(l); 
     if (denom > 1e-6) { 
         Eigen::Vector3d p0l0 = p0 - l0; 
-        t = p0l0.dot(n) / denom - .0000001; // in case tet is degenerate, don't quite hit the surface 
+        t = p0l0.dot(n) / denom - .001; // in case tet is degenerate, don't quite hit the surface 
         return (t >= 0); 
     } 
  
@@ -50,13 +50,20 @@ static bool advanceStreamline( const Eigen::MatrixXd& V, const CubeCover::TetMes
                 cur_vec = -cur_vec;
         }
     }
-    s.directionVecs.push_back(cur_vec);
+    cur_vec.normalize();
+
 
     // std::cout << "prev_vec: " << prev_vec  << std::endl;
 
     int cur_face_id = s.faceIds.back();
     int cur_local_fid = s.tetFaceIds.back();
     // int next_face_id = -1;
+
+    // std::cout << "cur_vec: " << cur_vec;
+    // std::cout << " cur_face_id: " << cur_face_id;
+    // std::cout << " cur_local_fid: " << cur_local_fid ;
+    // // std::cout << " cur_point: " << cur_point ;
+    // std::cout << " cur_tet_id: " << cur_tet_id ;
 
 
     Eigen::MatrixXd face_normals;
@@ -72,7 +79,7 @@ static bool advanceStreamline( const Eigen::MatrixXd& V, const CubeCover::TetMes
     Eigen::Vector3d intersect_point = cur_point;
     int next_face_orientation = -1;
 
-    for (int i = 0; i < 200; i++)
+    for (int i = 0; i < 4; i++)
     {
         if (i != cur_local_fid)
         {
@@ -106,15 +113,28 @@ static bool advanceStreamline( const Eigen::MatrixXd& V, const CubeCover::TetMes
         }
     }
 
+    if ( next_face_id == -1)
+    {
+        std::cout << "Something wierd happened! Ray already at the boundary!" << std::endl;
+        s.directionVecs.pop_back();
+        s.points.pop_back();
+        s.faceIds.pop_back();
+        return false;
+    }
+
+    s.directionVecs.push_back(cur_vec);
     s.points.push_back(intersect_point);
     s.faceIds.push_back(next_face_id);
 
-    std::cout << "cur_local_fid: " << cur_local_fid;
-    std::cout << " next_tet_id: " << next_tet_id;
-    std::cout << " next_face_id: " << next_face_id ;
+    // std::cout << "cur_local_fid: " << cur_local_fid;
+    // std::cout << " next_tet_id: " << next_tet_id;
+    // std::cout << " next_face_id: " << next_face_id ;
+    // std::cout << " next_face_orientation: " << next_face_orientation ;
+    // std::cout << " min_intersect_time: " << min_intersect_time ;
 
     if ( next_tet_id == -1)
     {
+         // std::cout << "EXIT EXIT EXIT EXIT EXIT EXIT EXIT EXIT : " << next_face_orientation ;
         return false;
     }
     else
@@ -129,10 +149,11 @@ static bool advanceStreamline( const Eigen::MatrixXd& V, const CubeCover::TetMes
         }
     }
 
+
     s.tetIds.push_back(next_tet_id);
     s.tetFaceIds.push_back(next_tetface_id);
     
-    std::cout << " next_tetface_id: " << next_tetface_id  << std::endl;
+    // std::cout << " next_tetface_id: " << next_tetface_id  << std::endl;
 
 
     return true;
@@ -165,7 +186,7 @@ void traceStreamlines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnecti
 
         int ntets = mesh.nTets();
 
-        for (int i = 0; i < 200; i++)
+        for (int i = 0; i < 500; i++)
         {
             it = visitedTets.find(i);
             if (it == visitedTets.end())
@@ -231,8 +252,8 @@ void traceStreamlines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnecti
     int counter = 0;
 
     int nstreamlines = init_tet_ids.rows();
-    // for (int i = 0; i < nstreamlines; i++)
-    for (int i = 30; i < 33; i++)
+    for (int i = 0; i < nstreamlines; i++)
+    // for (int i = 20; i < 28; i++)
     {
 
 
@@ -252,7 +273,7 @@ void traceStreamlines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnecti
                 {
                     cur_direction_vec = -cur_direction_vec;
                 }
-                std::cout << "processing streamline: " << counter << std::endl;
+                std::cout << std::endl << "processing streamline: " << counter << std::endl;
                 counter++;
 
 
@@ -296,8 +317,11 @@ void traceStreamlines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnecti
                         break;
                     }
                 }
-
-                traces.push_back(t);
+                if (t.tetIds.size() > 1)
+                {
+                    traces.push_back(t);
+                }
+                
             }
         }
     }
