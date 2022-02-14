@@ -3,6 +3,7 @@ project(hexextoOpenVDB)
 
 # Find Eigen
 find_package(Eigen3 3.3 REQUIRED)
+find_package(OpenMP REQUIRED)
 
 file(GLOB SRCFILES src/*.cpp src/*.h src/*.hpp)	  
 
@@ -13,4 +14,4 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${EIGEN3_INCLUDE_DIR} ../../sr
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 14)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD_REQUIRED ON)
 
-target_link_libraries(${PROJECT_NAME} cubecover polyscope OpenVDB::openvdb)
+target_link_libraries(${PROJECT_NAME} cubecover polyscope OpenVDB::openvdb OpenMP::OpenMP_CXX)

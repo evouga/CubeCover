@@ -209,16 +209,44 @@ int main(int argc, char *argv[])
      //       streamline_tets.clear();
                 int nsteps = traces.at(tid).points.size();
                 
+                Eigen::Vector3d first_edge = traces.at(tid).points.at(1) - traces.at(tid).points.at(0);
+                double fen = first_edge.norm();
+
+                bool addLast = true;
                 for (int i = 0; i < nsteps; i++ )
                 {
+                    // Eigen::Vector3d edge = traces.at(tid).points.at(i) - traces.at(tid).points.at(i+1); 
+                    // if (edge.norm() > fen * 5 )
+                    // {
+                    //     addLast = false;
+                    //     break;
+                    // }
                     cur_points.push_back( traces.at(tid).points.at(i) );
+
                 }
+                // if (addLast)
+                // {
+                //     cur_points.push_back( traces.at(tid).points.at(nsteps-1) );
+                // }
 
                 
-                for (int i = 0; i < nsteps-1; i++ )
+
+                
+                for (int i = 0; i < cur_points.size()-1; i++ )
                 {
                     cur_line_edges.push_back(Eigen::Vector2d(iter, iter+1) );
                     iter++;
+                    // Eigen::Vector3d edge = traces.at(tid).points.at(i) - traces.at(tid).points.at(i+1); 
+                    // if ( edge.norm() > fen * 2)
+                    // {
+                    //     i = i + nsteps;
+                    // }
+                    // else
+                    // {
+                    //     cur_line_edges.push_back(Eigen::Vector2d(iter, iter+1) );
+                    //     iter++;
+                    // }
+                  
                 }
                 iter++;
                 // std::cout << "traceId: " << tid << "nsteps: " << nsteps << std::endl;

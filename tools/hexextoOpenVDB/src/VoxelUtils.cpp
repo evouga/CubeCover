@@ -9,6 +9,8 @@
 
 #include <openvdb/openvdb.h>
 
+#include <omp.h>
+
 
 bool pointInsideT(const Eigen::Vector3d& A, 
                   const Eigen::Vector3d& B, 
@@ -1371,6 +1373,7 @@ void stampParamView(SceneInfo sc)
 
 
     std::cout << " number of tets in mesh " << ntets << std::endl;
+    #pragma omp parallel for 
      for (int t = 0; t < ntets; t++)
      {
    // int t = 17;
@@ -1441,9 +1444,9 @@ void stampParamView(SceneInfo sc)
 
         // this is used to rescale the sampling.  
 
-        double jac0 = jacobian.col(0).norm();
-        double jac1 = jacobian.col(1).norm();
-        double jac2 = jacobian.col(2).norm();
+        // double jac0 = jacobian.col(0).norm();
+        // double jac1 = jacobian.col(1).norm();
+        // double jac2 = jacobian.col(2).norm();
 
 
         // double jac_min = std::min( std::min(jac0, jac1), jac2 ); 
@@ -1462,7 +1465,7 @@ void stampParamView(SceneInfo sc)
 
 
 
-
+        omp_set_num_threads(8);
         // https://stackoverflow.com/questions/25179693/how-to-check-whether-the-point-is-in-the-tetrahedron-or-not
       
     //    std::cout << curt_min.transpose() << std::endl;
@@ -1485,94 +1488,153 @@ void stampParamView(SceneInfo sc)
 
 
 
-            //        std::cout << "return " << param_val_tet.transpose() << std::endl;
-             //       std::cout << param_val_tet.transpose() << std::endl << std::endl;
-                    // if ( pIsIn )
-                    // {
+        //        std::cout << "return " << param_val_tet.transpose() << std::endl;
+         //       std::cout << param_val_tet.transpose() << std::endl << std::endl;
+                // if ( pIsIn )
+                // {
+           
+                    Eigen::Vector3d da = param_gridcell.row(4 * t + 1) - param_gridcell.row(4 * t);
+                    Eigen::Vector3d db = param_gridcell.row(4 * t + 2) - param_gridcell.row(4 * t);
+                    Eigen::Vector3d dc = param_gridcell.row(4 * t + 3) - param_gridcell.row(4 * t);
+                    Eigen::Vector3d orig = param_gridcell.row(4 * t);
+
+                    double s0 = param_val_tet(0);
+                    double s1 = param_val_tet(1);
+                    double s2 = param_val_tet(2);
+
+                    Eigen::Vector3d interp_param_to_pixel = s0 * da + s1 * db + s2 * dc + orig;
+                    interp_param_to_pixel *= 1. / 6.28;
+
+
+                    // This plots the param per tet in the underlying mesh.  
+                    // Per tet normal vectors.  
+                    // acc_smoke_color.setValue(ijk, openvdb::Vec3s(float( param_val_tet(0) ), 
+                    //                                              float( param_val_tet(1) ), 
+                    //                                              float( param_val_tet(2) )) );
+
                
-                        Eigen::Vector3d da = param_gridcell.row(4 * t + 1) - param_gridcell.row(4 * t);
-                        Eigen::Vector3d db = param_gridcell.row(4 * t + 2) - param_gridcell.row(4 * t);
-                        Eigen::Vector3d dc = param_gridcell.row(4 * t + 3) - param_gridcell.row(4 * t);
-                        Eigen::Vector3d orig = param_gridcell.row(4 * t);
+                  //   std::cout << "interp_param_to_pixel" << interp_param_to_pixel.transpose() << std::endl<< std::endl;
 
-                        double s0 = param_val_tet(0);
-                        double s1 = param_val_tet(1);
-                        double s2 = param_val_tet(2);
-
-                        Eigen::Vector3d interp_param_to_pixel = s0 * da + s1 * db + s2 * dc + orig;
-                        interp_param_to_pixel *= 1. / 6.28;
-
-
-                        // This plots the param per tet in the underlying mesh.  
-                        // Per tet normal vectors.  
-                        // acc_smoke_color.setValue(ijk, openvdb::Vec3s(float( param_val_tet(0) ), 
-                        //                                              float( param_val_tet(1) ), 
-                        //                                              float( param_val_tet(2) )) );
-
-                   
-                      //   std::cout << "interp_param_to_pixel" << interp_param_to_pixel.transpose() << std::endl<< std::endl;
-
-                        // Find texture coordinate of pixel rounded to a unit cube.  
-                        double unit_u = interp_param_to_pixel(0) - floor(interp_param_to_pixel(0));
-                        double unit_v = interp_param_to_pixel(1) - floor(interp_param_to_pixel(1));
-                        double unit_w = interp_param_to_pixel(2) - floor(interp_param_to_pixel(2));
+                    // Find texture coordinate of pixel rounded to a unit cube.  
+                    double unit_u = interp_param_to_pixel(0) - floor(interp_param_to_pixel(0));
+                    double unit_v = interp_param_to_pixel(1) - floor(interp_param_to_pixel(1));
+                    double unit_w = interp_param_to_pixel(2) - floor(interp_param_to_pixel(2));
 
 // Project vector onto closest line.  
 
-                        // multiply by jacobian. 
-                        // if (  ) 
-                        double u_dist = std::min(unit_u, 1. - unit_u );
-                        double v_dist = std::min(unit_v, 1. - unit_v );
-                        double w_dist = std::min(unit_w, 1. - unit_w );
+                    // multiply by jacobian. 
+                    // if (  ) 
+                    double u_dist = std::min(unit_u, 1. - unit_u );
+                    double v_dist = std::min(unit_v, 1. - unit_v );
+                    double w_dist = std::min(unit_w, 1. - unit_w );
 
-                        Eigen::Vector3d paramVal_shifted;
-                        paramVal_shifted << u_dist, v_dist, w_dist;
+                    Eigen::Vector3d paramVal_shifted;
+                    paramVal_shifted << u_dist, v_dist, w_dist;
 
-                        Eigen::Vector3d param2world = jacobian * paramVal_shifted;
+                    Eigen::Vector3d param2world = jacobian * paramVal_shifted;
 
-                        if( sc.V_curr == embedding::WORLD_SPACE )
-                        {
+                    if( sc.V_curr == embedding::WORLD_SPACE )
+                    {
 
-                            u_dist = param2world[0];
-                            v_dist = param2world[1];
-                            w_dist = param2world[2];
+                        u_dist = param2world[0];
+                        v_dist = param2world[1];
+                        w_dist = param2world[2];
 
-                        }
-                        // else if( sc.V_curr == embedding::PARAM_SPACE )
-                        // {
-                        //     param2world[0] = 
-                        // }
+                    }
+                    // else if( sc.V_curr == embedding::PARAM_SPACE )
+                    // {
+                    //     param2world[0] = 
+                    // }
 
 
 
-                        Eigen::Vector3d roundedWorld = paramVal_shifted;
+                    Eigen::Vector3d roundedWorld = paramVal_shifted;
+                    if ( v_dist < line_w && w_dist < line_w )
+                    {
+                        roundedWorld[0] = 0.;
+                    }
+                    if ( u_dist < line_w && w_dist < line_w )
+                    {
+                        roundedWorld[1] = 0.;
+                    }
+                    if ( u_dist < line_w && v_dist < line_w )
+                    {
+                        roundedWorld[2] = 0.;
+                    }
+                    
+
+                    // std::cout << paramVal_shifted << " param val shift " << std::endl;
+                    // // std::cout << paramVal << " param val " << std::endl;
+                     // std::cout << u_dist << " " << v_dist << " " << w_dist << " u, v, w dist " << std::endl;
+                    // std::cout << param2world << " param2world" << std::endl;
+                    // std::cout << roundedWorld << " roundedWorld " << std::endl;
+
+
+                    if (sc.stamp_grid)
+                    { 
+
+
                         if ( v_dist < line_w && w_dist < line_w )
                         {
-                            roundedWorld[0] = 0.;
-                        }
-                        if ( u_dist < line_w && w_dist < line_w )
-                        {
-                            roundedWorld[1] = 0.;
-                        }
-                        if ( u_dist < line_w && v_dist < line_w )
-                        {
-                            roundedWorld[2] = 0.;
+                            acc_r.setValue(ijk, .6 );
+                            acc_g.setValue(ijk, .0 );
+                            acc_b.setValue(ijk, 0. );
+
+                            acc_strength.setValue(ijk, unit_u);
+
+                            if ( roundedWorld.norm() < world_line_w )
+                            {
+                                acc_smoke_density.setValue(ijk, 1.);
+                                acc_smoke_r.setValue(ijk, 1. );
+                                acc_smoke_g.setValue(ijk, .9 );
+                                acc_smoke_b.setValue(ijk, .9 );
+                            }
+
                         }
                         
-
-                        // std::cout << paramVal_shifted << " param val shift " << std::endl;
-                        // // std::cout << paramVal << " param val " << std::endl;
-                         // std::cout << u_dist << " " << v_dist << " " << w_dist << " u, v, w dist " << std::endl;
-                        // std::cout << param2world << " param2world" << std::endl;
-                        // std::cout << roundedWorld << " roundedWorld " << std::endl;
-
-
-                        if (sc.stamp_grid)
+                        else if ( u_dist < line_w && w_dist < line_w )
                         {
+                            acc_r.setValue(ijk, .0 );
+                            acc_g.setValue(ijk, .6 );
+                            acc_b.setValue(ijk, 0. );
 
- 
+                            acc_strength.setValue(ijk, unit_v);
 
-                            
+                            if ( roundedWorld.norm() < world_line_w )
+                            {
+                                acc_smoke_density.setValue(ijk, 1.);
+                                acc_smoke_r.setValue(ijk, .9 );
+                                acc_smoke_g.setValue(ijk, 1. );
+                                acc_smoke_b.setValue(ijk, .9 );
+                            }
+
+
+
+                        }
+                        else if ( u_dist < line_w && v_dist < line_w )
+                        {
+                            acc_r.setValue(ijk, .0 );
+                            acc_g.setValue(ijk, .0 );
+                            acc_b.setValue(ijk, .6 );
+
+                            acc_strength.setValue(ijk, unit_w);
+
+                            if ( roundedWorld.norm() < world_line_w )
+                            {
+                                acc_smoke_density.setValue(ijk, 1.);
+                                acc_smoke_r.setValue(ijk, .9 );
+                                acc_smoke_g.setValue(ijk, .9 );
+                                acc_smoke_b.setValue(ijk, 1.0 );
+                            }
+
+
+                        }      
+                    }
+                }
+            }
+        }
+// test vector in the axis plane so it's 2D, evaluate jacobian to put into world coordiantes before filtering.
+
                                 // if ( v_dist < line_w && w_dist < line_w )
                                 // {
                                 //     if ( pIsIn )
@@ -1622,74 +1684,6 @@ void stampParamView(SceneInfo sc)
                                    
                                 //     // acc_strength.setValue(ijk, float( interp_param_to_pixel(0) ));
                                 // }
-                if ( v_dist < line_w && w_dist < line_w )
-                {
-                    acc_r.setValue(ijk, .6 );
-                    acc_g.setValue(ijk, .0 );
-                    acc_b.setValue(ijk, 0. );
-
-                    acc_strength.setValue(ijk, unit_u);
-
-                    if ( roundedWorld.norm() < world_line_w )
-                    {
-                        acc_smoke_density.setValue(ijk, 1.);
-                        acc_smoke_r.setValue(ijk, 1. );
-                        acc_smoke_g.setValue(ijk, .9 );
-                        acc_smoke_b.setValue(ijk, .9 );
-                    }
-
-                }
-                
-                else if ( u_dist < line_w && w_dist < line_w )
-                {
-                    acc_r.setValue(ijk, .0 );
-                    acc_g.setValue(ijk, .6 );
-                    acc_b.setValue(ijk, 0. );
-
-                    acc_strength.setValue(ijk, unit_v);
-
-                    if ( roundedWorld.norm() < world_line_w )
-                    {
-                        acc_smoke_density.setValue(ijk, 1.);
-                        acc_smoke_r.setValue(ijk, .9 );
-                        acc_smoke_g.setValue(ijk, 1. );
-                        acc_smoke_b.setValue(ijk, .9 );
-                    }
-
-
-
-                }
-                            else if ( u_dist < line_w && v_dist < line_w )
-                            {
-                                acc_r.setValue(ijk, .0 );
-                                acc_g.setValue(ijk, .0 );
-                                acc_b.setValue(ijk, .6 );
-
-                                acc_strength.setValue(ijk, unit_w);
-
-                                if ( roundedWorld.norm() < world_line_w )
-                                {
-                                    acc_smoke_density.setValue(ijk, 1.);
-                                    acc_smoke_r.setValue(ijk, .9 );
-                                    acc_smoke_g.setValue(ijk, .9 );
-                                    acc_smoke_b.setValue(ijk, 1.0 );
-                                }
-
-
-                            }
-                            
-                            
-
-       
-
-                        }
-               
-
-
-
-// test vector in the axis plane so it's 2D, evaluate jacobian to put into world coordiantes before filtering.
-
-
 
 
 
@@ -1888,9 +1882,6 @@ void stampParamView(SceneInfo sc)
             //        }
 
                 } */
-            }}
-        }
-
 
         // if (tetIsActive)
         // {

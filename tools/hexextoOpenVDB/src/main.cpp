@@ -68,15 +68,15 @@ int main(int argc, char *argv[])
 
 
 // Config settings.  
-    double cells = 1.;
+    double cells = 4.;
     // double cell_res = 64.;
-    double cell_res = 64.;
+    double cell_res = 32.;
     double sample_res = cells * cell_res;  // target_cells * res_per_cell 
     // double line_w = .05;
     // double border_w = .2; // 
     // double cosmic_background = 0.0000; // this is the glow of the parameterisation.   Try setting to like .04
-    // embedding cur_embed = embedding::PARAM_SPACE;  // PARAM_SPACE
-     embedding cur_embed = embedding::WORLD_SPACE;  // PARAM_S
+    embedding cur_embed = embedding::PARAM_SPACE;  // PARAM_SPACE
+     // embedding cur_embed = embedding::WORLD_SPACE;  // PARAM_S
 
 
 
@@ -119,8 +119,8 @@ int main(int argc, char *argv[])
 
     std::string file_slug = "tetrahedron_200_ginzs85_subd";
 
+    std::string directory_slug = "/mnt/extra0/josh/mint_condor_results/local_results/output_frames_dir/";
     // std::string directory_slug = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/";
-    std::string directory_slug = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/";
 
     std::string hexexfile =  directory_slug + pathname_slug + "/" + file_slug + "_seamless.hexex";
 
@@ -303,7 +303,7 @@ int main(int argc, char *argv[])
     grid_smoke_g->setName("smoke_g");
     grid_smoke_b->setName("smoke_b");
     grid_strength->setName("emission_strength");
-    grid_smoke_density->setName("density");
+    grid_smoke_density->setName("smoke_density");
     grid_smoke_color->setName("smoke_color");
 
     openvdb::GridPtrVecPtr grids(new openvdb::GridPtrVec);
