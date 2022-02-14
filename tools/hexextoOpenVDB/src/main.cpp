@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
 
 
 // Config settings.  
-    double cells = 4.;
+    double cells = 1.;
     // double cell_res = 64.;
     double cell_res = 64.;
     double sample_res = cells * cell_res;  // target_cells * res_per_cell 
