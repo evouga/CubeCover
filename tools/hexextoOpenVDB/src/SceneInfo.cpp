@@ -76,6 +76,7 @@ SceneInfo::SceneInfo( const std::string hexexfile, const double sample_res )
     // move min of bounding box to (0,0,0), rescale tet embedding to morph into sampling domain.  
  //   if ( V_curr == embedding::WORLD_SPACE )
     Eigen::Vector3d rangebound = mesh_max - mesh_min;
+    std::cout << "Embedding bounds" << " mesh_max: " << mesh_max << " mesh_min: " << mesh_min << std::endl;
 
 
 

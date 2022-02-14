@@ -24,9 +24,9 @@ bool pointInsideT(const Eigen::Vector3d& A,
 
 Eigen::Matrix3d JacobianMetric(SceneInfo sc, int t_idx);
 
-
-
 void stampParamView(SceneInfo info);
+
+void stampParamView_old(SceneInfo info);
 
 
 // void stampLatticeView(SceneInfo info);

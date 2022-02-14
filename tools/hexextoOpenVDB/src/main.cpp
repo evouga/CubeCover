@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 // Config settings.  
     double cells = 4.;
     // double cell_res = 64.;
-    double cell_res = 16.;
+    double cell_res = 64.;
     double sample_res = cells * cell_res;  // target_cells * res_per_cell 
     // double line_w = .05;
     // double border_w = .2; // 
@@ -84,7 +84,8 @@ int main(int argc, char *argv[])
     {
       //  cell_res = cell_res / 8.;
 
-        sample_res *= 16;
+        // really the thing to do here is to resize the world space mesh to be the same resolution as the param space bounding box.
+        sample_res *= cells;
     }
 
     // if( cur_embed == embedding::PARAM_SPACE )
@@ -112,13 +113,23 @@ int main(int argc, char *argv[])
     // std::string file_slug = "umbillic_torus_4kT";
     // std::string file_slug = "tetrahedron_2600_tets";
     // std::string file_slug = "menger1_400";
-    std::string pathname_slug = "disk_3480_tets";
-    std::string file_slug = "disk_3480_tets";
+    // std::string pathname_slug = "disk_paul_mint_sharp";
+  // std::string file_slug = "disk_3480_tets_ginzs85";
+    std::string pathname_slug = "tetra_200_mint";
 
-    std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + pathname_slug + "/" + file_slug + "_int.hexex";
+    std::string file_slug = "tetrahedron_200_ginzs85_subd";
+
+    // std::string directory_slug = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/";
+    std::string directory_slug = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/";
+
+    std::string hexexfile =  directory_slug + pathname_slug + "/" + file_slug + "_seamless.hexex";
+
+
+
+
     // std::string permfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + ".perm";
-    std::string meshfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + pathname_slug + "/" + file_slug + ".mesh";
-    std::string frafile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + pathname_slug + "/" + file_slug + ".fra";
+    // std::string meshfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + pathname_slug + "/" + file_slug + ".mesh";
+    // std::string frafile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + pathname_slug + "/" + file_slug + ".fra";
 
 
     //     std::string hexexfile = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/" + file_slug + "/" + file_slug + "_subd_int.hexex";
@@ -292,7 +303,7 @@ int main(int argc, char *argv[])
     grid_smoke_g->setName("smoke_g");
     grid_smoke_b->setName("smoke_b");
     grid_strength->setName("emission_strength");
-    grid_smoke_density->setName("smoke_density");
+    grid_smoke_density->setName("density");
     grid_smoke_color->setName("smoke_color");
 
     openvdb::GridPtrVecPtr grids(new openvdb::GridPtrVec);
