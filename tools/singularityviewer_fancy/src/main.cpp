@@ -22,7 +22,42 @@
 // #include "FrameField.h"
 #include "CurlCorrection.h"
 
+#include <experimental/filesystem> 
 
+struct FileParts
+{
+    std::string path; //!< containing folder, if provided, including trailing slash
+    std::string name; //!< base file name, without extension
+    std::string ext;  //!< extension, including '.'
+};
+
+//! Using only text manipulation, splits a full path into component file parts
+FileParts fileparts(const std::string &fullpath)
+{
+    using namespace std;
+
+    size_t idxSlash = fullpath.rfind("/");
+    if (idxSlash == string::npos) {
+        idxSlash = fullpath.rfind("\\");
+    }
+    size_t idxDot = fullpath.rfind(".");
+
+    FileParts fp;
+    if (idxSlash != string::npos && idxDot != string::npos) {
+        fp.path = fullpath.substr(0, idxSlash + 1);
+        fp.name = fullpath.substr(idxSlash + 1, idxDot - idxSlash - 1);
+        fp.ext  = fullpath.substr(idxDot);
+    } else if (idxSlash == string::npos && idxDot == string::npos) {
+        fp.name = fullpath;
+    } else if (/* only */ idxSlash == string::npos) {
+        fp.name = fullpath.substr(0, idxDot);
+        fp.ext  = fullpath.substr(idxDot);
+    } else { // only idxDot == string::npos
+        fp.path = fullpath.substr(0, idxSlash + 1);
+        fp.name = fullpath.substr(idxSlash + 1);
+    }
+    return fp;
+}
 
 int main(int argc, char *argv[])
 {
@@ -44,22 +79,34 @@ int main(int argc, char *argv[])
 
     std::string meshfile = argv[1];
     std::string frafile = argv[2];
+    std::string file_slug = argv[3];
+
+
+    FileParts f = fileparts(file_slug);
+    std::cout << file_slug<< "AAAAAAAAA " << f.path << "BBBBBBBBb " << f.name << " " << f.ext << " " << std::endl;
+
+// Handle Mint_mesh as well, this is only for mint_fit
+    std::string fit_target = f.path + "_analytic.fra";
+    frafile = fit_target;
+
+// fileparts(file_slug,fpath,fname,fext);
+
 
     // std::string meshfile = "disk_3480_tets_gl3.mesh";
     // std::string frafile = "disk_3480_tets_gl3.fra";
 
 
-    bool showViz = true;
-    std::string badverts;
+    // bool showViz = true;
+    // std::string badverts;
 
-    if (argc >= 4)
-    {
-        badverts = argv[3];
-        if (badverts != "1")
-            showViz = false;
-    }
+    // if (argc >= 4)
+    // {
+    //     badverts = argv[3];
+    //     if (badverts != "1")
+    //         showViz = false;
+    // }
 
-    std::cout << badverts << std::endl;
+    // std::cout << badverts << std::endl;
 
 
     Eigen::MatrixXi F;
@@ -178,6 +225,105 @@ int main(int argc, char *argv[])
 //     Eigen::MatrixXd edgeCurl; 
 //     CubeCover::readEdgeCurl(edges_mintfile, edgecurlfile, edgesdata_mint, edgeCurl);
 
+    // std::string perEdgeCurl_fid = file_slug + '_perEdgeCurl.txt';
+    // std::string perEdgeCurl_fid = file_slug + '_interior_edges.txt';
+    int ntets = field->meshConnectivity().nTets();
+
+
+    std::string perFaceCurl_fid = file_slug + "_perFaceCurl.txt";
+    std::string perFaceSmoothness_fid = file_slug + "_perFaceSmoothness.txt";
+    std::string perFaceFrameMags_fid = file_slug + "_frameMags.txt";
+
+    std::ifstream ifs(perFaceCurl_fid);
+    Eigen::VectorXd curl_mint;
+    curl_mint.resize(ntets);
+    for (int i = 0; i < ntets; i++)
+    {
+        ifs >> curl_mint(i);
+    }
+    ifs.close();
+    Eigen::VectorXd tmp = curl_mint;
+    std::sort(tmp.data(), tmp.data() + tmp.size() ) ;
+    std::pair<double,double> curl_mint_range = std::pair<double,double>(tmp(0), tmp(int( tmp.rows() * .9 ) ));
+
+
+
+
+    std::ifstream ifs2(perFaceSmoothness_fid);
+    Eigen::VectorXd smoothness_mint;
+    smoothness_mint.resize(ntets);
+    for (int i = 0; i < ntets; i++)
+    {
+        ifs2 >> smoothness_mint(i);
+    }
+    ifs2.close();
+
+    tmp = smoothness_mint;
+    std::sort(tmp.data(), tmp.data() + tmp.size() ) ;
+    std::pair<double,double> smoothness_mint_range = std::pair<double,double>(tmp(0), tmp(int( tmp.rows() * .9 ) ));
+    std::cout << "high smooth " << tmp(int( tmp.rows() * .9 ) ) << std::endl;
+
+
+    std::ifstream ifs3(perFaceFrameMags_fid);
+    Eigen::VectorXd framemags_mint;
+    framemags_mint.resize(ntets);
+    for (int i = 0; i < ntets; i++)
+    {
+        ifs3 >> framemags_mint(i);
+    }
+    ifs3.close();
+
+    tmp = framemags_mint;
+    std::sort(tmp.data(), tmp.data() + tmp.size() ) ;
+    std::pair<double,double> framemags_mint_range = std::pair<double,double>(tmp(0), tmp(int( tmp.rows() * .9 ) ));
+    std::cout << "high smooth " << tmp(int( tmp.rows() * .9 ) ) << std::endl;
+
+
+
+    // std::string small_fid = file_slug + "_smallframes.txt";
+    // std::string mid_fid = file_slug + "_midframes.txt";
+    // std::string big_fid = file_slug + "_largeframes.txt";
+
+    // std::ifstream ifs4(small_fid);
+    // Eigen::VectorXd small_frames;
+    // small_frames.resize(ntets);
+    // for (int i = 0; i < ntets; i++)
+    // {
+    //     ifs4 >> small_frames(i);
+    // }
+    // ifs4.close();
+
+    // tmp = small_frames;
+    // std::sort(tmp.data(), tmp.data() + tmp.size() ) ;
+    // std::pair<double,double> smallframes_range = std::pair<double,double>(tmp(0), tmp(int( tmp.rows() * .9 ) ));
+
+    // std::ifstream ifs5(mid_fid);
+    // Eigen::VectorXd mid_frames;
+    // mid_frames.resize(ntets);
+    // for (int i = 0; i < ntets; i++)
+    // {
+    //     ifs5 >> mid_frames(i);
+    // }
+    // ifs5.close();
+
+    // tmp = mid_frames;
+    // std::sort(tmp.data(), tmp.data() + tmp.size() ) ;
+    // std::pair<double,double> midframes_range = std::pair<double,double>(tmp(0), tmp(int( tmp.rows() * .9 ) ));
+
+    // std::ifstream ifs6(big_fid);
+    // Eigen::VectorXd big_frames;
+    // small_frames.resize(ntets);
+    // for (int i = 0; i < ntets; i++)
+    // {
+    //     ifs6 >> big_frames(i);
+    // }
+    // ifs6.close();
+
+    // tmp = big_frames;
+    // std::sort(tmp.data(), tmp.data() + tmp.size() ) ;
+    // std::pair<double,double> bigframes_range = std::pair<double,double>(tmp(0), tmp(int( tmp.rows() * .9 ) ));
+
+
 
 
     int vpf = field->vectorsPerFrame();
@@ -240,7 +386,7 @@ int main(int argc, char *argv[])
     buildCurlMatrix(vpf,  V, *field, C);
     
 
-    int ntets = field->meshConnectivity().nTets();
+
 
     Eigen::VectorXd unrolled(ntets * vpf * 3);
 
@@ -346,6 +492,10 @@ std::cout << "all_curl abs min" << all_curl_min << std::endl;
 
 std::cout << "per_tet_sum abs min" << per_tet_sum_curl_min << std::endl;
 
+    tmp = per_tet_sum_curl;
+    std::sort(tmp.data(), tmp.data() + tmp.size() ) ;
+    std::pair<double,double> curl_range = std::pair<double,double>(tmp(0), tmp(int( tmp.rows() * .9 ) ));
+
     std::cout << "min frame entry: " << frames.minCoeff() << std::endl;
     std::cout << "max frame entry: " << frames.maxCoeff() << std::endl;
 
@@ -367,6 +517,7 @@ std::cout << "per_tet_sum abs min" << per_tet_sum_curl_min << std::endl;
 
 
         polyscope::init();
+        polyscope::options::transparencyRenderPasses = 32;
 
         auto *tetc = polyscope::registerPointCloud("Centroids", centroids);
         glm::vec3 dotcolor(0.1, 0.1, 0.1);
@@ -385,25 +536,67 @@ std::cout << "per_tet_sum abs min" << per_tet_sum_curl_min << std::endl;
             vf->setEnabled(true);
         }
 
-        // auto *green = polyscope::registerCurveNetwork("Singular Curves (+1/4)", Pgreen, Egreen);
-        // green->setColor({ 0.0,1.0,0.0 });
+        auto *green = polyscope::registerCurveNetwork("Singular Curves (+1/4)", Pgreen, Egreen);
+        green->setColor({ 0.0,1.0,0.0 });
+        green->setTransparency(0.8);
 
-        // auto *blue = polyscope::registerCurveNetwork("Singular Curves (-1/4)", Pblue, Eblue);
-        // blue->setColor({ 0.0,0.0,1.0 });
+        auto *blue = polyscope::registerCurveNetwork("Singular Curves (-1/4)", Pblue, Eblue);
+        blue->setColor({ 0.0,0.0,1.0 });
+        blue->setTransparency(0.8);
 
-        // auto *black = polyscope::registerCurveNetwork("Singular Curves (irregular)", Pblack, Eblack);
-        // black->setColor({ 0.0,0.0,0.0 });
+        auto *black = polyscope::registerCurveNetwork("Singular Curves (irregular)", Pblack, Eblack);
+        black->setColor({ 0.0,0.0,0.0 });
+        black->setTransparency(0.8);
 
         polyscope::registerTetMesh("tet_mesh", V, T);
         auto scalarQ = polyscope::getVolumeMesh("tet_mesh")->addCellScalarQuantity("real_curl_sum", per_tet_sum_curl);
         scalarQ->setEnabled(true);
+        scalarQ->setMapRange(curl_range);
+
+        auto mintCurlQ = polyscope::getVolumeMesh("tet_mesh")->addCellScalarQuantity("mint_curl_sum", curl_mint);
+        mintCurlQ->setEnabled(false);
+        mintCurlQ->setMapRange(curl_mint_range);
+
+        auto mintSmoothQ = polyscope::getVolumeMesh("tet_mesh")->addCellScalarQuantity("mint_smoothness_sum", smoothness_mint);
+        mintSmoothQ->setEnabled(false);
+        mintSmoothQ->setMapRange(smoothness_mint_range);
+
+        auto mintFrameMagsQ = polyscope::getVolumeMesh("tet_mesh")->addCellScalarQuantity("mint_framemags_sum", framemags_mint);
+        mintFrameMagsQ->setEnabled(false);
+        mintFrameMagsQ->setMapRange(framemags_mint_range);
+
+        CubeCover::plot_tet_scalar_field(file_slug + "_perFaceCurl.txt", "tet_mesh", "FACE CURL");
+        CubeCover::plot_tet_scalar_field(file_slug + "_smallframes.txt", "tet_mesh", "SMALL NORMS");
+        CubeCover::plot_tet_scalar_field(file_slug + "_medframes.txt", "tet_mesh", "MEDIUM NORMS");
+        CubeCover::plot_tet_scalar_field(file_slug + "_largeframes.txt", "tet_mesh", "BIGGEST NORMS");
+
+
+
+        // auto smallFrameMagsQ = polyscope::getVolumeMesh("tet_mesh")->addCellScalarQuantity("small_framemags", small_frames);
+        // smallFrameMagsQ->setEnabled(false);
+        // smallFrameMagsQ->setMapRange(smallframes_range);
+
+        // auto midFrameMagsQ = polyscope::getVolumeMesh("tet_mesh")->addCellScalarQuantity("mid_framemags", mid_frames);
+        // midFrameMagsQ->setEnabled(false);
+        // midFrameMagsQ->setMapRange(midframes_range);
+
+        // auto bigFrameMagsQ = polyscope::getVolumeMesh("tet_mesh")->addCellScalarQuantity("big_framemags", big_frames);
+        // bigFrameMagsQ->setEnabled(false);
+        // bigFrameMagsQ->setMapRange(bigframes_range);
+
+        
+
+        polyscope::getVolumeMesh("tet_mesh")->setTransparency(0.2);
+
 
         auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", V, bdryF);
         psMesh->setTransparency(0.2);
         psMesh->setSurfaceColor({ 0.5,0.5,0.0 });
+        psMesh->setEnabled(false);
 
         auto* seammesh = polyscope::registerSurfaceMesh("Seam", seamV, seamF);
         seammesh->setSurfaceColor({ 0.0, 0.0, 0.0 });
+        seammesh->setEnabled(false);
 
         // visualize!
         polyscope::show();

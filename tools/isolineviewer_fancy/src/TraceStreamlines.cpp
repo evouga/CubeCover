@@ -186,7 +186,7 @@ void traceStreamlines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnecti
 
         int ntets = mesh.nTets();
 
-        for (int i = 0; i < 200; i++)
+        for (int i = 0; i < 100; i++)
         {
             it = visitedTets.find(i);
             if (it == visitedTets.end())

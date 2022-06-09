@@ -212,43 +212,34 @@ int main(int argc, char *argv[])
                 Eigen::Vector3d first_edge = traces.at(tid).points.at(1) - traces.at(tid).points.at(0);
                 double fen = first_edge.norm();
 
+                int cur_len = 0;
                 bool addLast = true;
-                for (int i = 0; i < nsteps; i++ )
+                for (int i = 0; i < nsteps-1; i++ )
                 {
-                    // Eigen::Vector3d edge = traces.at(tid).points.at(i) - traces.at(tid).points.at(i+1); 
-                    // if (edge.norm() > fen * 5 )
-                    // {
-                    //     addLast = false;
-                    //     break;
-                    // }
+                    Eigen::Vector3d edge = traces.at(tid).points.at(i) - traces.at(tid).points.at(i+1); 
+                    if (edge.norm() > fen * 5 )
+                    {
+                        addLast = false;
+                        break;
+                    }
                     cur_points.push_back( traces.at(tid).points.at(i) );
+                    cur_len++;
 
                 }
-                // if (addLast)
-                // {
-                //     cur_points.push_back( traces.at(tid).points.at(nsteps-1) );
-                // }
-
-                
-
-                
-                for (int i = 0; i < cur_points.size()-1; i++ )
+                if (addLast)
                 {
-                    cur_line_edges.push_back(Eigen::Vector2d(iter, iter+1) );
-                    iter++;
-                    // Eigen::Vector3d edge = traces.at(tid).points.at(i) - traces.at(tid).points.at(i+1); 
-                    // if ( edge.norm() > fen * 2)
-                    // {
-                    //     i = i + nsteps;
-                    // }
-                    // else
-                    // {
-                    //     cur_line_edges.push_back(Eigen::Vector2d(iter, iter+1) );
-                    //     iter++;
-                    // }
-                  
+                    cur_points.push_back( traces.at(tid).points.at(nsteps-1) );
+                    cur_len++;
                 }
-                iter++;
+
+                
+
+                
+                for (int i = 0; i < cur_len-1; i++ )
+                {
+                    cur_line_edges.push_back(Eigen::Vector2d(iter+i, iter+i+1) );                  
+                }
+                iter = iter + cur_len;
                 // std::cout << "traceId: " << tid << "nsteps: " << nsteps << std::endl;
                 // for (int i = 0; i < nsteps-1; i++ )
                 // {

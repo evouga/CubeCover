@@ -14,6 +14,9 @@ namespace CubeCover
                       Eigen::MatrixXi& edges_mint, 
                       Eigen::MatrixXd& edgeCurl);
 
+
+    void plot_tet_scalar_field(std::string fra_path, std::string mesh_name, std::string display_name);
+
 };
 
 #endif
