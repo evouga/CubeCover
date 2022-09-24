@@ -59,6 +59,31 @@ FileParts fileparts(const std::string &fullpath)
     return fp;
 }
 
+
+void myCallback() {
+
+	// Since options::openImGuiWindowForUserCallback == true by default, 
+	// we can immediately start using ImGui commands to build a UI
+
+	ImGui::PushItemWidth(100); // Make ui elements 100 pixels wide,
+							   // instead of full width. Must have 
+							   // matching PopItemWidth() below.
+
+//	ImGui::InputInt("num points", &nPts);             // set a int variable
+//	ImGui::InputFloat("param value", &anotherParam);  // set a float variable
+
+//	if (ImGui::Button("run subroutine")) {
+		// executes when button is pressed
+//		mySubroutine();
+//	}
+	ImGui::SameLine();
+	if (ImGui::Button("hi")) {
+		polyscope::warning("hi");
+	}
+
+	ImGui::PopItemWidth();
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -608,6 +633,8 @@ std::cout << "per_tet_sum abs min" << per_tet_sum_curl_min << std::endl;
 
 		*/
 
+
+		polyscope::state::userCallback = myCallback;
         // visualize!
         polyscope::show();
     
