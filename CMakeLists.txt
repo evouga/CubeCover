@@ -10,17 +10,18 @@ endif()
 
 set(BUILD_SINGULARITY_VIEWER ON CACHE BOOL "Build Singularity Viewer")
 set(BUILD_ISOLINE_VIEWER ON CACHE BOOL "Build Isoline Viewer")
-set(BUILD_BINARIES ON CACHE BOOL "Build Command-line Binaries")
+set(BUILD_BINARIES OFF CACHE BOOL "Build Command-line Binaries")
 set(BUILD_VIZ_TOOLS OFF CACHE BOOL "Build Stuff for Volume Rendering")
+set(BUILD_MINT_FRONTEND ON CACHE BOOL "Build the mint frame field solver front end.")
 
-set(USE_GUROBI ON CACHE BOOL "Use Gurobi for solving MIPs")
-set(USE_COMISO ON CACHE BOOL "Use Comiso for solving MIPs")
+set(USE_GUROBI OFF CACHE BOOL "Use Gurobi for solving MIPs")
+set(USE_COMISO OFF CACHE BOOL "Use Comiso for solving MIPs")
 
 # Libigl
 set(LIBIGL_WITH_COMISO $CACHE{USE_COMISO} CACHE BOOL "Build LIBIGL with CoMISo" FORCE)
 include(libigl)
 
-if(BUILD_SINGULARITY_VIEWER OR BUILD_ISOLINE_VIEWER)
+if(BUILD_SINGULARITY_VIEWER OR BUILD_ISOLINE_VIEWER OR BUILD_MINT_FRONTEND)
   # Find Polyscope
   find_package(Polyscope REQUIRED)
 endif()
@@ -79,6 +80,10 @@ endif()
 
 if(BUILD_VIZ_TOOLS)
   add_subdirectory(tools/hexextoOpenVDB)
+endif()
+
+if (BUILD_MINT_FRONTEND)
+  add_subdirectory(tools/mint_frontend)
 endif()
 
 if(BUILD_BINARIES)
