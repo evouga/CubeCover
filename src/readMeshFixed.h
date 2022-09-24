@@ -6,6 +6,7 @@
 #include <sstream>
 #include <Eigen/Core>
 #include <iostream>
+#include <cctype>
 
 namespace CubeCover {
 
