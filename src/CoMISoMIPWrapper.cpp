@@ -1,4 +1,5 @@
 #include "MIPWrapper.h"
+#include <iostream>
 
 #ifdef HAS_COMISO
 #include "CoMISo/Solver/ConstrainedSolver.hh"
