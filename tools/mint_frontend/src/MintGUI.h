@@ -21,18 +21,23 @@ namespace MintFrontend
 
         void select_mesh();
         void select_boundary();
+        void select_mint_output_dir();
+
+        void set_comment();
 
         void file_select_subroutine();
-        void output_directory();
+        
 
         void gui_callback();
 
         void save_current_state();
 
+		MintGUI();
 
     private:
         // matlab thread
         // json 
+        char* lines[];
 
 
      
