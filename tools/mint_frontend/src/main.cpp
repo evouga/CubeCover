@@ -69,11 +69,10 @@ FileParts fileparts(const std::string &fullpath)
 
 std::string directory_path = "";
 
-
-void fileSelectSubroutine()
+std::string fileSelectSubroutine()
 {
-    directory_path = igl::file_dialog_open();
-    std::cout << directory_path << std::endl;
+    std::string blah = igl::file_dialog_open();
+    std::cout << blah << std::endl;
 }
 
 
@@ -97,7 +96,7 @@ void myCallback() {
 
   if (ImGui::Button("run subroutine")) {
     // executes when button is pressed
-    fileSelectSubroutine();
+    directory_path = fileSelectSubroutine();
   }
 
 	ImGui::SameLine();
