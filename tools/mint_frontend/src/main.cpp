@@ -24,6 +24,13 @@
 
 #include <experimental/filesystem> 
 
+#include <igl/file_dialog_open.h>
+
+// #include "../tinyfiledialogs/tinyfiledialogs.h"
+//  https://stackoverflow.com/a/47651444   
+
+
+
 struct FileParts
 {
     std::string path; //!< containing folder, if provided, including trailing slash
@@ -60,6 +67,17 @@ FileParts fileparts(const std::string &fullpath)
 }
 
 
+std::string directory_path = "";
+
+
+void fileSelectSubroutine()
+{
+    directory_path = igl::file_dialog_open();
+    std::cout << directory_path << std::endl;
+}
+
+
+
 void myCallback() {
 
 	// Since options::openImGuiWindowForUserCallback == true by default, 
@@ -76,6 +94,12 @@ void myCallback() {
 		// executes when button is pressed
 //		mySubroutine();
 //	}
+
+  if (ImGui::Button("run subroutine")) {
+    // executes when button is pressed
+    fileSelectSubroutine();
+  }
+
 	ImGui::SameLine();
 	if (ImGui::Button("hi")) {
 		polyscope::warning("hi");

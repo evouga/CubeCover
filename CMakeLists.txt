@@ -10,11 +10,11 @@ endif()
 
 set(BUILD_SINGULARITY_VIEWER ON CACHE BOOL "Build Singularity Viewer")
 set(BUILD_ISOLINE_VIEWER ON CACHE BOOL "Build Isoline Viewer")
-set(BUILD_BINARIES OFF CACHE BOOL "Build Command-line Binaries")
+set(BUILD_BINARIES ON CACHE BOOL "Build Command-line Binaries")
 set(BUILD_VIZ_TOOLS OFF CACHE BOOL "Build Stuff for Volume Rendering")
 set(BUILD_MINT_FRONTEND ON CACHE BOOL "Build the mint frame field solver front end.")
 
-set(USE_GUROBI OFF CACHE BOOL "Use Gurobi for solving MIPs")
+set(USE_GUROBI ON CACHE BOOL "Use Gurobi for solving MIPs")
 set(USE_COMISO OFF CACHE BOOL "Use Comiso for solving MIPs")
 
 # Libigl
@@ -29,7 +29,7 @@ endif()
 if(BUILD_VIZ_TOOLS)
   list(APPEND CMAKE_MODULE_PATH "/usr/local/lib/cmake/OpenVDB")
   find_package(OpenVDB REQUIRED)
-  endif()
+endif()
 
 if(USE_GUROBI)   
     # use gurobi
