@@ -16,6 +16,7 @@ namespace CubeCover {
     {
     public:
         TetMeshConnectivity(const Eigen::MatrixXi& T);
+        TetMeshConnectivity();
 
         int nTets() const { return T.rows(); }
         int nFaces() const { return F.rows(); }

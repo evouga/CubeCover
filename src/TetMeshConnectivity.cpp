@@ -9,7 +9,7 @@
 
 namespace CubeCover
 {
-
+    TetMeshConnectivity::TetMeshConnectivity() : TetMeshConnectivity(T) {  };
     TetMeshConnectivity::TetMeshConnectivity(const Eigen::MatrixXi& T) : T(T)
     {
         struct Triple

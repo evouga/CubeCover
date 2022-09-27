@@ -2,12 +2,21 @@
 #define MINTGUI_H
 
 #include <Eigen/Core>
+#include "TetMeshConnectivity.h"
 
 namespace MintFrontend
 {
     /*
     * This parses the stuff dumped by dumpExtraVizStuff in the mint repo
     */
+
+    struct FileParts
+    {
+        std::string path; //!< containing folder, if provided, including trailing slash
+        std::string name; //!< base file name, without extension
+        std::string ext;  //!< extension, including '.'
+    };
+
 
    class MintGUI
    {
@@ -19,9 +28,11 @@ namespace MintFrontend
         void write_cur_state();
         void load_state_from_output_dir();
 
-        void select_mesh();
-        void select_boundary();
-        void select_mint_output_dir();
+
+        void set_base_mesh();
+        // void select_mesh();
+        // void select_boundary();
+        // void select_mint_output_dir();
 
         void set_comment();
 
@@ -32,6 +43,9 @@ namespace MintFrontend
 
         void save_current_state();
 
+        FileParts fileparts(const std::string &fullpath);
+        
+
 		MintGUI();
 
     private:
@@ -41,6 +55,14 @@ namespace MintFrontend
         char* path_mesh;
         char* path_constraints;
         char* path_outdir;
+
+
+        CubeCover::TetMeshConnectivity mesh;
+
+        Eigen::MatrixXd V;
+        Eigen::MatrixXi T;
+        Eigen::MatrixXi F;
+
 
      
 

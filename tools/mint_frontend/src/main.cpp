@@ -33,61 +33,12 @@
 
 
 
-struct FileParts
-{
-    std::string path; //!< containing folder, if provided, including trailing slash
-    std::string name; //!< base file name, without extension
-    std::string ext;  //!< extension, including '.'
-};
-
-//! Using only text manipulation, splits a full path into component file parts
-FileParts fileparts(const std::string &fullpath)
-{
-    using namespace std;
-
-    size_t idxSlash = fullpath.rfind("/");
-    if (idxSlash == string::npos) {
-        idxSlash = fullpath.rfind("\\");
-    }
-    size_t idxDot = fullpath.rfind(".");
-
-    FileParts fp;
-    if (idxSlash != string::npos && idxDot != string::npos) {
-        fp.path = fullpath.substr(0, idxSlash + 1);
-        fp.name = fullpath.substr(idxSlash + 1, idxDot - idxSlash - 1);
-        fp.ext  = fullpath.substr(idxDot);
-    } else if (idxSlash == string::npos && idxDot == string::npos) {
-        fp.name = fullpath;
-    } else if (/* only */ idxSlash == string::npos) {
-        fp.name = fullpath.substr(0, idxDot);
-        fp.ext  = fullpath.substr(idxDot);
-    } else { // only idxDot == string::npos
-        fp.path = fullpath.substr(0, idxSlash + 1);
-        fp.name = fullpath.substr(idxSlash + 1);
-    }
-    return fp;
-}
 
 
 std::string directory_path = "";
 
-std::string fileSelectSubroutine()
-{
-    std::string blah = igl::file_dialog_open();
-    std::cout << blah << std::endl;
-}
 
 MintFrontend::MintGUI* gui;
-
-void myCallback() {
-
-	// Since options::openImGuiWindowForUserCallback == true by default, 
-	// we can immediately start using ImGui commands to build a UI
-    // gui->gui_callback(); 
-
-
-}
-
 
 
 
