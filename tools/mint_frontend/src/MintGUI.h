@@ -25,7 +25,7 @@ namespace MintFrontend
 
         void set_comment();
 
-        void file_select_subroutine();
+        char* file_select_subroutine();
         
 
         void gui_callback();
@@ -37,8 +37,10 @@ namespace MintFrontend
     private:
         // matlab thread
         // json 
-        char* lines[];
-
+        char* lines;
+        char* path_mesh;
+        char* path_constraints;
+        char* path_outdir;
 
      
 
