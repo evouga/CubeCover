@@ -78,8 +78,11 @@ void MintGUI::set_base_mesh()
     if (!CubeCover::readMESH(path_mesh, V, T, F))
         polyscope::warning("Unable to load selected mesh");
     else{
-        polyscope::registerTetMesh("tet_mesh", V, T);
-        CubeCover::TetMeshConnectivity mesh(T);
+        polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5);
+
+
+
+        mesh = CubeCover::TetMeshConnectivity(T);
         // make boundary mesh out of volume mesh
             // make a mesh out of all of the boundary faces
         int nbdry = 0;
@@ -89,7 +92,8 @@ void MintGUI::set_base_mesh()
             if (mesh.isBoundaryFace(i))
                 nbdry++;
         }
-        Eigen::MatrixXi bdryF(nbdry, 3);
+
+        bdryF(nbdry, 3);
         int curidx = 0;
         for (int i = 0; i < nfaces; i++)
         {
@@ -168,9 +172,20 @@ void MintGUI::gui_callback()
     ImGui::SameLine();
 
     if (ImGui::Button("(re)load view mesh")) {
-        // auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", V, bdryF);
-        // psMesh->setTransparency(0.2);
-        // psMesh->setSurfaceColor({ 0.5,0.5,0.0 });
+        auto cur_path_parts = fileparts(path_mesh);
+        std::cout << cur_path_parts.ext << std::endl;
+
+        std::string data = cur_path_parts.ext;
+        std::transform(data.begin(), data.end(), data.begin(),
+            [](unsigned char c){ return std::tolower(c); });
+        if (data == ".mesh" )
+        {
+            set_base_mesh();
+        }
+        else 
+        {
+            polyscope::warning("Please pick a .mesh file to load.  Support for .obj coming eventually...");
+        }
     }
 
     ImGui::PushItemWidth(300);

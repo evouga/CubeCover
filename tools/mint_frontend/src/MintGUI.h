@@ -62,6 +62,7 @@ namespace MintFrontend
         Eigen::MatrixXd V;
         Eigen::MatrixXi T;
         Eigen::MatrixXi F;
+        Eigen::MatrixXi bdryF;
 
 
      
