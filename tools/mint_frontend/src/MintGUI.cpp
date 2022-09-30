@@ -81,8 +81,8 @@ FileParts MintGUI::fileparts(const std::string &fullpath)
 
 void MintGUI::show_base_mesh()
 {
-    polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5);
-    polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1);
+    polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7);
+    polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7);
 }
 
 
@@ -142,7 +142,7 @@ void MintGUI::set_base_mesh()
                 curidx++;
             }
         }
-    
+        show_base_mesh();
     }
 
 
