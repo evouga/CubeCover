@@ -506,6 +506,12 @@ std::cout << "per_tet_sum abs min" << per_tet_sum_curl_min << std::endl;
     std::mt19937 rng(dev());
     std::uniform_real_distribution<double> dist(0.0, 1.0);
 
+    polyscope::options::autoscaleStructures = true;
+    // polyscope::options::autocenterStructures = true;
+    polyscope::state::lengthScale = 1.;
+// polyscope::state::boundingBox = 
+//     std::tuple<glm::vec3, glm::vec3>{ {-1., -1., -1.}, {1., 1., 1.} };
+
 
         polyscope::init();
         polyscope::options::transparencyRenderPasses = 32;

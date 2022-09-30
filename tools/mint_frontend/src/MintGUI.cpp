@@ -81,8 +81,30 @@ FileParts MintGUI::fileparts(const std::string &fullpath)
 
 void MintGUI::show_base_mesh()
 {
-    polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7);
-    polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7);
+    clear_polyscope_state();
+    polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
+    polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7)->rescaleToUnit();
+}
+
+
+
+void MintGUI::show_constraint_vals()
+{
+    clear_polyscope_state();
+
+    for( int i = 0; i < 3; i++)
+    {
+        for( int j = 0; j < 5; j++)
+        {
+            int cur_id = i*5 + j;
+            auto cur_mesh = polyscope::registerTetMesh("tet_mesh_" + std::to_string(cur_id), V, T);
+            glm::vec3 shift(j * 2., i * 2., 0);
+            cur_mesh->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
+            cur_mesh->translate(shift);
+        }
+    }
+    // polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7);
+    // polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7);
 }
 
 
@@ -90,6 +112,25 @@ void MintGUI::show_base_mesh()
 
 
 
+
+
+void MintGUI::clear_polyscope_state()
+{
+
+    polyscope::removeStructure("tet_mesh", false);
+    polyscope::removeStructure("surf_mesh", false);
+
+
+    for( int i = 0; i < 3; i++)
+    {
+        for( int j = 0; j < 5; j++)
+        {
+            int cur_id = i*5 + j;
+            polyscope::removeStructure("tet_mesh_" + std::to_string(cur_id), false);
+        }
+    }
+
+}
 
 
 
@@ -127,7 +168,6 @@ void MintGUI::set_base_mesh()
         {
             if (mesh.isBoundaryFace(i))
             {
-                std::cout << "i: " << i << std::endl;
                 for (int j = 0; j < 3; j++)
                 {
                     bdryF(curidx, j) = mesh.faceVertex(i, j);
@@ -221,36 +261,8 @@ void MintGUI::gui_callback()
     }
 
 
+
     ///////////////////////////////////////////////////////////////////////////
-
-    ImGui::PushItemWidth(300);
-    ImGui::InputTextWithHint("Bound Constraints (moment space)", "enter rel or abs path, or use picker button below.", path_constraints, 512);
-    ImGui::PopItemWidth();
-
-
-
-    if (ImGui::Button("Pick .bound")) {
-        char* tmp_path_constraints = fileSelectSubroutine();
-        strncpy(path_constraints, tmp_path_constraints, 512);
-    }
-
-    ImGui::SameLine();
-    
-    if (ImGui::Button("(re)Load Boundary")) {
-
-      polyscope::warning("The chosen .bound file does not match the loaded mesh.");
-    // executes when button is pressed
-    // directory_path = fileSelectSubroutine();
-    }
-
-     ImGui::SameLine();
-
-    if (ImGui::Button("Project Bound to closest GL(3) field")) {
-    // executes when button is pressed
-    // directory_path = fileSelectSubroutine();
-    }
-
-
 
         ImGui::PushItemWidth(300);
     ImGui::InputTextWithHint("Mint output directory", "enter rel or abs path, or use picker button below.", path_outdir, IM_ARRAYSIZE(path_outdir));
@@ -258,7 +270,7 @@ void MintGUI::gui_callback()
 
 
 
-    ///////////////////////////////////////////////////////////////////////////
+
 
     if (ImGui::Button("Pick mint output dir")) {
         char* tmp_path_outdir = fileSelectSubroutine();
@@ -267,9 +279,9 @@ void MintGUI::gui_callback()
 
     ImGui::SameLine();
     
-    if (ImGui::Button("Load dir contents")) {
+    if (ImGui::Button("Create or Load")) {
 
-      polyscope::warning("The chosen .bound file does not match the loaded mesh.");
+      polyscope::warning("This directory did not exist, creating it");
     // executes when button is pressed
     // directory_path = fileSelectSubroutine();
 
@@ -304,6 +316,52 @@ void MintGUI::gui_callback()
     // executes when button is pressed
     // directory_path = fileSelectSubroutine();
     }
+
+
+
+
+
+
+    ///////////////////////////////////////////////////////////////////////////
+
+    ImGui::PushItemWidth(300);
+    ImGui::InputTextWithHint("Bound Constraints (moment space)", "enter rel or abs path, or use picker button below.", path_constraints, 512);
+    ImGui::PopItemWidth();
+
+
+
+    if (ImGui::Button("Pick .bound")) {
+        char* tmp_path_constraints = fileSelectSubroutine();
+        strncpy(path_constraints, tmp_path_constraints, 512);
+    }
+
+    ImGui::SameLine();
+    
+    if (ImGui::Button("(re)Load Boundary")) {
+
+      polyscope::warning("The chosen .bound file does not match the loaded mesh.");
+    // executes when button is pressed
+    // directory_path = fileSelectSubroutine();
+    }
+
+     ImGui::SameLine();
+
+    if (ImGui::Button("Compute and Load normal boundary")) {
+
+        show_constraint_vals();
+
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Project Bound to closest GL(3) field")) {
+    // executes when button is pressed
+    // directory_path = fileSelectSubroutine();
+    }
+
+
+
+
 
 
     static ImGuiTextFilter filter;
