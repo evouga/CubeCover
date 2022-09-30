@@ -16,6 +16,13 @@
 #include <cctype>
 #include <string>
 
+
+#include <nlohmann/json.hpp>
+
+// for convenience
+using json = nlohmann::json;
+
+
 // This is c++14 experimental feature.  In c++17 >= this is part of STD.
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
@@ -93,12 +100,15 @@ void MintGUI::set_base_mesh()
                 nbdry++;
         }
 
-        bdryF(nbdry, 3);
+        bdryF.resize(nbdry, 3);
+        std::cout << "nbdry" << nbdry << std::endl<< std::endl<< std::endl;
+        std::cout << "bdryF " << bdryF.size() << std::endl;
         int curidx = 0;
         for (int i = 0; i < nfaces; i++)
         {
             if (mesh.isBoundaryFace(i))
             {
+                std::cout << "i: " << i << std::endl;
                 for (int j = 0; j < 3; j++)
                 {
                     bdryF(curidx, j) = mesh.faceVertex(i, j);
@@ -141,6 +151,9 @@ void MintGUI::gui_callback()
 
 
     // std::cout << rightWindowsWidth << std::endl;
+
+
+    ///////////////////////////////////////////////////////////////////////////
 
     ImGui::PushItemWidth(300);
     ImGui::InputTextWithHint("Mesh Path", "enter rel or abs path, or use picker button below.", path_mesh, 512);
@@ -188,6 +201,9 @@ void MintGUI::gui_callback()
         }
     }
 
+
+    ///////////////////////////////////////////////////////////////////////////
+
     ImGui::PushItemWidth(300);
     ImGui::InputTextWithHint("Bound Constraints (moment space)", "enter rel or abs path, or use picker button below.", path_constraints, 512);
     ImGui::PopItemWidth();
@@ -223,6 +239,8 @@ void MintGUI::gui_callback()
 
 
 
+    ///////////////////////////////////////////////////////////////////////////
+
     if (ImGui::Button("Pick mint output dir")) {
         char* tmp_path_outdir = fileSelectSubroutine();
         strncpy(path_outdir, tmp_path_outdir, 512);
@@ -235,6 +253,31 @@ void MintGUI::gui_callback()
       polyscope::warning("The chosen .bound file does not match the loaded mesh.");
     // executes when button is pressed
     // directory_path = fileSelectSubroutine();
+
+
+        //     char* tmp_path_mesh = fileSelectSubroutine();
+        // strncpy(path_mesh, tmp_path_mesh, 512);
+        // auto cur_path_parts = fileparts(path_mesh);
+        // std::cout << cur_path_parts.ext << std::endl;
+
+        // std::string data = cur_path_parts.ext;
+        // std::transform(data.begin(), data.end(), data.begin(),
+        //     [](unsigned char c){ return std::tolower(c); });
+
+
+        // std::cout << data << std::endl;
+        // if (data == ".mesh" )
+        // {
+        //     set_base_mesh();
+        // }
+        // else 
+        // {
+        //     polyscope::warning("Please pick a .mesh file to load.  Support for .obj coming eventually...");
+        // }
+
+
+
+
     }
 
   
@@ -273,7 +316,7 @@ void MintGUI::gui_callback()
 		polyscope::warning("hi");
 	}
 
-    // ImGui::ShowDemoWindow(); 
+    ImGui::ShowDemoWindow(); 
 
 	ImGui::PopItemWidth();
 }
