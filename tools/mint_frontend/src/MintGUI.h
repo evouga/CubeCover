@@ -17,6 +17,8 @@ namespace MintFrontend
         std::string ext;  //!< extension, including '.'
     };
 
+    enum Mint_Linear_Solver{ exact, gmres };
+
 
    class MintGUI
    {
@@ -24,6 +26,8 @@ namespace MintFrontend
 
 
     public:  
+		MintGUI();
+
         void read_prev_state_log();
         void write_cur_state();
         void load_state_from_output_dir();
@@ -52,9 +56,11 @@ namespace MintFrontend
         void save_current_state();
 
         FileParts fileparts(const std::string &fullpath);
+
+
         
 
-		MintGUI();
+
 
     private:
         // matlab thread
@@ -71,6 +77,11 @@ namespace MintFrontend
         Eigen::MatrixXi T;
         Eigen::MatrixXi F;
         Eigen::MatrixXi bdryF;
+
+        Mint_Linear_Solver cur_solver;
+
+
+        float exploded_spacing = 2.f;
 
 
      

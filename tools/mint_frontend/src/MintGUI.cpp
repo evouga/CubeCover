@@ -37,7 +37,7 @@ namespace MintFrontend
         path_constraints = new char[512];
         path_outdir = new char[512];
 
-        
+        mesh = CubeCover::TetMeshConnectivity();
 	}
 
 char * fileSelectSubroutine()
@@ -46,6 +46,8 @@ char * fileSelectSubroutine()
     return strdup(picked_file.c_str());
     // return picked_file.data();
 }
+
+
 
 
 
@@ -81,15 +83,28 @@ FileParts MintGUI::fileparts(const std::string &fullpath)
 
 void MintGUI::show_base_mesh()
 {
+    std::cout << "show_base_mesh" << std::endl;
     clear_polyscope_state();
-    polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
-    polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7)->rescaleToUnit();
+    auto tet_mesh = polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7);
+    auto surf_mesh = polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7);
+
+    tet_mesh->rescaleToUnit();
+    surf_mesh->rescaleToUnit();
+
+    tet_mesh->resetTransform();
+    surf_mesh->resetTransform();
+    
+        // std::cout << "V: " << V.size() << std::endl;
+        // std::cout << "T: " << T << std::endl;
+        polyscope::view::resetCameraToHomeView();
 }
 
 
 
 void MintGUI::show_constraint_vals()
 {
+
+    std::cout << "show_constraint_vals" << std::endl;
     clear_polyscope_state();
 
     for( int i = 0; i < 3; i++)
@@ -97,14 +112,18 @@ void MintGUI::show_constraint_vals()
         for( int j = 0; j < 5; j++)
         {
             int cur_id = i*5 + j;
-            auto cur_mesh = polyscope::registerTetMesh("tet_mesh_" + std::to_string(cur_id), V, T);
-            glm::vec3 shift(j * 2., i * 2., 0);
+            glm::vec3 shift(j * exploded_spacing, i * exploded_spacing, 0);
+            auto cur_mesh = polyscope::registerTetMesh("tet_mesh_" + std::to_string(1000 + cur_id), V, T);
+
             cur_mesh->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
+            cur_mesh->resetTransform();
             cur_mesh->translate(shift);
+            // std::cout << "tet_mesh_" + std::to_string(1000 + cur_id) + " " <<  glm::to_string(cur_mesh->getTransform()) << std::endl;
         }
     }
     // polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7);
     // polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7);
+    polyscope::view::resetCameraToHomeView();
 }
 
 
@@ -117,6 +136,7 @@ void MintGUI::show_constraint_vals()
 void MintGUI::clear_polyscope_state()
 {
 
+    std::cout << "clear_polyscope_state" << std::endl;
     polyscope::removeStructure("tet_mesh", false);
     polyscope::removeStructure("surf_mesh", false);
 
@@ -126,7 +146,7 @@ void MintGUI::clear_polyscope_state()
         for( int j = 0; j < 5; j++)
         {
             int cur_id = i*5 + j;
-            polyscope::removeStructure("tet_mesh_" + std::to_string(cur_id), false);
+            polyscope::removeStructure("tet_mesh_" + std::to_string(1000 + cur_id), false);
         }
     }
 
@@ -312,14 +332,18 @@ void MintGUI::gui_callback()
     }
 
   
-    if (ImGui::Button("Project Bound to closest GL(3) field")) {
+    if (ImGui::Button("Run Mint")) {
     // executes when button is pressed
     // directory_path = fileSelectSubroutine();
     }
 
 
 
+if (ImGui::RadioButton("Exact", cur_solver == Mint_Linear_Solver::exact))  { cur_solver = Mint_Linear_Solver::exact; } ImGui::SameLine();
+if (ImGui::RadioButton("GMRes", cur_solver == Mint_Linear_Solver::gmres))  { cur_solver = Mint_Linear_Solver::gmres; } 
 
+
+ 
 
 
     ///////////////////////////////////////////////////////////////////////////
@@ -344,7 +368,7 @@ void MintGUI::gui_callback()
     // directory_path = fileSelectSubroutine();
     }
 
-     ImGui::SameLine();
+
 
     if (ImGui::Button("Compute and Load normal boundary")) {
 
@@ -352,7 +376,9 @@ void MintGUI::gui_callback()
 
     }
 
-    ImGui::SameLine();
+    ImGui::PushItemWidth(300);
+   ImGui::SliderFloat("Exploded Spacing", &exploded_spacing, 0.0f, 5.0f, "ratio = %.3f");
+    ImGui::PopItemWidth();
 
     if (ImGui::Button("Project Bound to closest GL(3) field")) {
     // executes when button is pressed
