@@ -112,12 +112,18 @@ void MintGUI::show_constraint_vals()
         for( int j = 0; j < 5; j++)
         {
             int cur_id = i*5 + j;
-            glm::vec3 shift(j * exploded_spacing, i * exploded_spacing, 0);
-            auto cur_mesh = polyscope::registerTetMesh("tet_mesh_" + std::to_string(1000 + cur_id), V, T);
+            glm::vec3 shift(-j * exploded_spacing, -i * exploded_spacing, 0);
+            auto cur_mesh = polyscope::registerTetMesh("tet_mesh_" + std::to_string(1000000 + cur_id), V, T);
+            auto surf_mesh = polyscope::registerSurfaceMesh("surf_mesh_" + std::to_string(1000000 + cur_id), V, bdryF);
 
             cur_mesh->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
             cur_mesh->resetTransform();
             cur_mesh->translate(shift);
+
+            surf_mesh->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
+            surf_mesh->resetTransform();
+            surf_mesh->translate(shift);
+
             // std::cout << "tet_mesh_" + std::to_string(1000 + cur_id) + " " <<  glm::to_string(cur_mesh->getTransform()) << std::endl;
         }
     }
@@ -146,7 +152,16 @@ void MintGUI::clear_polyscope_state()
         for( int j = 0; j < 5; j++)
         {
             int cur_id = i*5 + j;
-            polyscope::removeStructure("tet_mesh_" + std::to_string(1000 + cur_id), false);
+            polyscope::removeStructure("tet_mesh_" + std::to_string(1000000 + cur_id), false);
+        }
+    }
+
+        for( int i = 0; i < 3; i++)
+    {
+        for( int j = 0; j < 5; j++)
+        {
+            int cur_id = i*5 + j;
+            polyscope::removeStructure("surf_mesh_" + std::to_string(1000000 + cur_id), false);
         }
     }
 
@@ -377,7 +392,7 @@ if (ImGui::RadioButton("GMRes", cur_solver == Mint_Linear_Solver::gmres))  { cur
     }
 
     ImGui::PushItemWidth(300);
-   ImGui::SliderFloat("Exploded Spacing", &exploded_spacing, 0.0f, 5.0f, "ratio = %.3f");
+   ImGui::SliderFloat("Exploded Spacing", &exploded_spacing, 0.0f, 50.0f, "ratio = %.3f");
     ImGui::PopItemWidth();
 
     if (ImGui::Button("Project Bound to closest GL(3) field")) {
