@@ -29,6 +29,14 @@ namespace MintFrontend
         void load_state_from_output_dir();
 
 
+        void show_base_mesh();
+        void show_constraint_vals();
+        void show_moments();
+
+        // for some reason, polyscope 
+        void clear_polyscope_state();
+
+
         void set_base_mesh();
         // void select_mesh();
         // void select_boundary();

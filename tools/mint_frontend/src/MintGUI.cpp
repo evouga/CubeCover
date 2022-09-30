@@ -79,16 +79,35 @@ FileParts MintGUI::fileparts(const std::string &fullpath)
 }
 
 
+void MintGUI::show_base_mesh()
+{
+    polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5);
+    polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void MintGUI::set_base_mesh()
 {
     if (!CubeCover::readMESH(path_mesh, V, T, F))
+    {
         polyscope::warning("Unable to load selected mesh");
+        mesh = CubeCover::TetMeshConnectivity();
+    }
+
     else{
-        polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5);
-
-
-
         mesh = CubeCover::TetMeshConnectivity(T);
         // make boundary mesh out of volume mesh
             // make a mesh out of all of the boundary faces
@@ -101,8 +120,8 @@ void MintGUI::set_base_mesh()
         }
 
         bdryF.resize(nbdry, 3);
-        std::cout << "nbdry" << nbdry << std::endl<< std::endl<< std::endl;
-        std::cout << "bdryF " << bdryF.size() << std::endl;
+        // std::cout << "nbdry" << nbdry << std::endl<< std::endl<< std::endl;
+        // std::cout << "bdryF " << bdryF.size() << std::endl;
         int curidx = 0;
         for (int i = 0; i < nfaces; i++)
         {
