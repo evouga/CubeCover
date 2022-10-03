@@ -60,7 +60,7 @@ namespace MintFrontend
         FileParts fileparts(const std::string &fullpath);
 
         char* path_mesh;
-        
+        char* path_outdir;
 
 
 
@@ -70,7 +70,9 @@ namespace MintFrontend
         char* lines;
 
         char* path_constraints;
-        char* path_outdir;
+
+        int sel_idx;
+
 
 
         CubeCover::TetMeshConnectivity mesh;
@@ -86,6 +88,7 @@ namespace MintFrontend
         bool showInteriorTets; 
 
         std::vector<std::string>  moment_labels; 
+        std::vector<std::string>  folder_contents; 
 
         float exploded_spacing;
 

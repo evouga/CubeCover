@@ -68,6 +68,7 @@ static void HelpMarker(const char* desc)
 
 
         exploded_spacing = 120.;
+        sel_idx = -1;
 
 
         // Load config file here. 
@@ -283,6 +284,30 @@ void MintGUI::set_base_mesh()
 
 
 }
+
+void MintGUI::load_state_from_output_dir()
+{
+    folder_contents.clear();
+    for (const auto & entry : fs::directory_iterator(path_outdir))
+    {
+        // std::cout << entry.path() << std::endl;
+        std::string tmp = entry.path();
+        FileParts fp = fileparts(tmp);
+        if (fp.ext == ".mom")
+            folder_contents.push_back( entry.path() );
+    }
+
+    sel_idx = -1;
+
+    for (int i = 0; i < folder_contents.size(); i++)
+    {
+        std::cout << folder_contents.at(i) << std::endl;
+
+    }
+
+}
+
+
 
 
 void MintGUI::gui_callback()

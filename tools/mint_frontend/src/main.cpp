@@ -516,13 +516,15 @@ std::cout << "per_tet_sum abs min" << per_tet_sum_curl_min << std::endl;
     // std::tuple<glm::vec3, glm::vec3>{ {-1., -1., -1.}, {1., 1., 1.} };
 
 
-        polyscope::init();
-        polyscope::options::transparencyRenderPasses = 32;
+    polyscope::init();
+    polyscope::options::transparencyRenderPasses = 32;
 
 
-        gui->path_mesh = "/home/josh/Documents/MATLAB/integrable-frames-3d/meshes/TetWild/square_slab_1000.mesh";
-        gui->set_base_mesh();
-        gui->show_base_mesh();
+    gui->path_mesh = "/home/josh/Documents/MATLAB/integrable-frames-3d/meshes/TetWild/square_slab_1000.mesh";
+    gui->set_base_mesh();
+    gui->show_base_mesh();
+    gui->path_outdir = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/disk_idx_1_free_test_spectral_bound/";
+    gui->load_state_from_output_dir();
 
 		/*
 
