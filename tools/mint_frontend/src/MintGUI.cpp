@@ -120,6 +120,8 @@ void MintGUI::show_base_mesh()
 {
     std::cout << "show_base_mesh" << std::endl;
     clear_polyscope_state();
+    polyscope::options::automaticallyComputeSceneExtents = true;
+
     auto tet_mesh = polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7);
     auto surf_mesh = polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7);
 
@@ -132,7 +134,7 @@ void MintGUI::show_base_mesh()
         // std::cout << "V: " << V.size() << std::endl;
         // std::cout << "T: " << T << std::endl;
 
-        polyscope::view::resetCameraToHomeView();
+    polyscope::view::resetCameraToHomeView();
     //                 polyscope::state::boundingBox = 
     // std::tuple<glm::vec3, glm::vec3>{ {-1., -1., -1.}, {1., 1., 1.} };
 }
@@ -144,6 +146,8 @@ void MintGUI::show_constraint_vals()
 
     std::cout << "show_constraint_vals" << std::endl;
     clear_polyscope_state();
+    polyscope::options::automaticallyComputeSceneExtents = true;
+    // polyscope::state::lengthScale = polyscope::state::lengthScale * 1/5.;
 
     for( int i = 0; i < 3; i++)
     {
@@ -181,6 +185,9 @@ void MintGUI::show_constraint_vals()
     }
     // polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7);
     // polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7);
+    polyscope::options::automaticallyComputeSceneExtents = false;
+    polyscope::state::lengthScale = polyscope::state::lengthScale * 3.;
+
     polyscope::view::resetCameraToHomeView();
     // polyscope::state::boundingBox = 
     //     std::tuple<glm::vec3, glm::vec3>{ {-2.5, -1.5, -1.}, {2.5, 1.5, 1.} };
@@ -304,7 +311,7 @@ void MintGUI::gui_callback()
     ///////////////////////////////////////////////////////////////////////////
 
     ImGui::PushItemWidth(300);
-    ImGui::InputTextWithHint("", "enter rel or abs path, or use picker button.", path_mesh, 512);   
+    ImGui::InputTextWithHint("1", "abs mesh path, or use picker button.", path_mesh, 512);   
     ImGui::PopItemWidth();
     ImGui::SameLine();
     HelpMarker("Mesh Path");
@@ -359,7 +366,7 @@ void MintGUI::gui_callback()
     ///////////////////////////////////////////////////////////////////////////
 
         ImGui::PushItemWidth(300);
-    ImGui::InputTextWithHint("", "enter rel or abs path, or use picker button below.", path_outdir, IM_ARRAYSIZE(path_outdir));
+    ImGui::InputTextWithHint("2", "enter rel or abs path, or use picker.", path_outdir, IM_ARRAYSIZE(path_outdir));
     ImGui::PopItemWidth();
 
 
@@ -408,13 +415,19 @@ void MintGUI::gui_callback()
     }
 
   
+    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+
+    if (ImGui::TreeNode("Contents of chosen dir"))
+    {
+             ImGui::TreePop();
+    }
 
 
 
     ///////////////////////////////////////////////////////////////////////////
 
     ImGui::PushItemWidth(300);
-    ImGui::InputTextWithHint("", "enter rel or abs path, or use picker button below.", path_constraints, 512);
+    ImGui::InputTextWithHint("3", "path to exploded moments", path_constraints, 512);
     ImGui::PopItemWidth();
     ImGui::SameLine();
     HelpMarker("Hard Boundary Constraints, in moment space, sparse representation");
