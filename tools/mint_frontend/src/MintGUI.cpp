@@ -64,11 +64,14 @@ static void HelpMarker(const char* desc)
                               "y^4", "y^3 z", "y^2 z^2", "y z^3", "z^4"};
         std::vector<std::string> tmp(args, std::end(args));
         moment_labels = tmp;
-        // Load config file here. 
 
 
 
         exploded_spacing = 120.;
+
+
+        // Load config file here. 
+
         
 	}
 

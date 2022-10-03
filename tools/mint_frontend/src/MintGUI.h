@@ -87,10 +87,7 @@ namespace MintFrontend
 
         std::vector<std::string>  moment_labels; 
 
-
-// std::vector<std::string> v(args, std::end(args));
-
-        float exploded_spacing = 2.f;
+        float exploded_spacing;
 
 
      
