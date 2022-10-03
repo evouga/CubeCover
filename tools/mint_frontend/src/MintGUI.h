@@ -19,6 +19,8 @@ namespace MintFrontend
 
     enum Mint_Linear_Solver{ exact, gmres };
 
+    enum Moments_To_Show{ second, fourth, both };
+
 
    class MintGUI
    {
@@ -57,7 +59,7 @@ namespace MintFrontend
 
         FileParts fileparts(const std::string &fullpath);
 
-
+        char* path_mesh;
         
 
 
@@ -66,7 +68,7 @@ namespace MintFrontend
         // matlab thread
         // json 
         char* lines;
-        char* path_mesh;
+
         char* path_constraints;
         char* path_outdir;
 
@@ -79,7 +81,14 @@ namespace MintFrontend
         Eigen::MatrixXi bdryF;
 
         Mint_Linear_Solver cur_solver;
+        Moments_To_Show moment_view_mode;
+        bool showBoundary;
+        bool showInteriorTets; 
 
+        std::vector<std::string>  moment_labels; 
+
+
+// std::vector<std::string> v(args, std::end(args));
 
         float exploded_spacing = 2.f;
 

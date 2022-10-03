@@ -506,15 +506,23 @@ std::cout << "per_tet_sum abs min" << per_tet_sum_curl_min << std::endl;
     std::mt19937 rng(dev());
     std::uniform_real_distribution<double> dist(0.0, 1.0);
 
+    polyscope::options::automaticallyComputeSceneExtents = true;
+
     polyscope::options::autoscaleStructures = true;
     polyscope::options::autocenterStructures = true;
-    polyscope::state::lengthScale = 1.;
-    polyscope::state::boundingBox = 
-    std::tuple<glm::vec3, glm::vec3>{ {-1., -1., -1.}, {1., 1., 1.} };
+    // polyscope::state::lengthScale = 1.;
+    // // polyscope::options::automaticallyComputeSceneExtents = true;
+    // polyscope::state::boundingBox = 
+    // std::tuple<glm::vec3, glm::vec3>{ {-1., -1., -1.}, {1., 1., 1.} };
 
 
         polyscope::init();
         polyscope::options::transparencyRenderPasses = 32;
+
+
+        gui->path_mesh = "/home/josh/Documents/MATLAB/integrable-frames-3d/meshes/TetWild/square_slab_1000.mesh";
+        gui->set_base_mesh();
+        gui->show_base_mesh();
 
 		/*
 

@@ -31,6 +31,21 @@ namespace fs = std::experimental::filesystem;
 namespace MintFrontend
 {
 
+
+static void HelpMarker(const char* desc)
+{
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
+
+
 	MintGUI::MintGUI()
 	{
         path_mesh = new char[512];
@@ -38,6 +53,23 @@ namespace MintFrontend
         path_outdir = new char[512];
 
         mesh = CubeCover::TetMeshConnectivity();
+        moment_view_mode = Moments_To_Show::fourth;
+
+        showBoundary = true;
+        showInteriorTets = true;
+
+
+        const char *args[] = {"x^4", "x^3 y", "x^3 z", "x^2 y^2", "x^2 y z", 
+                              "x^2 z^2", "x y^3", "x y^2 z", "x y z^2", "x z^3", 
+                              "y^4", "y^3 z", "y^2 z^2", "y z^3", "z^4"};
+        std::vector<std::string> tmp(args, std::end(args));
+        moment_labels = tmp;
+        // Load config file here. 
+
+
+
+        exploded_spacing = 120.;
+        
 	}
 
 char * fileSelectSubroutine()
@@ -96,7 +128,10 @@ void MintGUI::show_base_mesh()
     
         // std::cout << "V: " << V.size() << std::endl;
         // std::cout << "T: " << T << std::endl;
+
         polyscope::view::resetCameraToHomeView();
+    //                 polyscope::state::boundingBox = 
+    // std::tuple<glm::vec3, glm::vec3>{ {-1., -1., -1.}, {1., 1., 1.} };
 }
 
 
@@ -113,16 +148,30 @@ void MintGUI::show_constraint_vals()
         {
             int cur_id = i*5 + j;
             glm::vec3 shift(-j * exploded_spacing, -i * exploded_spacing, 0);
-            auto cur_mesh = polyscope::registerTetMesh("tet_mesh_" + std::to_string(1000000 + cur_id), V, T);
-            auto surf_mesh = polyscope::registerSurfaceMesh("surf_mesh_" + std::to_string(1000000 + cur_id), V, bdryF);
 
-            cur_mesh->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
-            cur_mesh->resetTransform();
-            cur_mesh->translate(shift);
+            if (showInteriorTets)
+            {
+                // auto cur_mesh = polyscope::registerTetMesh(moment_labels.at(cur_id) + "_tm_" + std::to_string(1000000 + cur_id), V, T);
+                auto cur_mesh = polyscope::registerTetMesh(std::to_string(10000 + cur_id) + "____" +moment_labels.at(cur_id), V, T);
 
-            surf_mesh->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
-            surf_mesh->resetTransform();
-            surf_mesh->translate(shift);
+
+                cur_mesh->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
+                cur_mesh->resetTransform();
+                cur_mesh->translate(shift);
+            }
+
+            if (showBoundary)
+            {
+                // auto surf_mesh = polyscope::registerSurfaceMesh(moment_labels.at(cur_id) + "_sm_" + std::to_string(1000000 + cur_id), V, bdryF);
+                auto surf_mesh = polyscope::registerSurfaceMesh(std::to_string(20000 + cur_id) + "____" + moment_labels.at(cur_id), V, bdryF);
+
+
+
+                surf_mesh->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
+                surf_mesh->resetTransform();
+                surf_mesh->translate(shift);
+            }
+
 
             // std::cout << "tet_mesh_" + std::to_string(1000 + cur_id) + " " <<  glm::to_string(cur_mesh->getTransform()) << std::endl;
         }
@@ -130,6 +179,8 @@ void MintGUI::show_constraint_vals()
     // polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7);
     // polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7);
     polyscope::view::resetCameraToHomeView();
+    // polyscope::state::boundingBox = 
+    //     std::tuple<glm::vec3, glm::vec3>{ {-2.5, -1.5, -1.}, {2.5, 1.5, 1.} };
 }
 
 
@@ -152,7 +203,7 @@ void MintGUI::clear_polyscope_state()
         for( int j = 0; j < 5; j++)
         {
             int cur_id = i*5 + j;
-            polyscope::removeStructure("tet_mesh_" + std::to_string(1000000 + cur_id), false);
+            polyscope::removeStructure(std::to_string(10000 + cur_id) + "____" + moment_labels.at(cur_id), false);
         }
     }
 
@@ -161,7 +212,7 @@ void MintGUI::clear_polyscope_state()
         for( int j = 0; j < 5; j++)
         {
             int cur_id = i*5 + j;
-            polyscope::removeStructure("surf_mesh_" + std::to_string(1000000 + cur_id), false);
+            polyscope::removeStructure(std::to_string(20000 + cur_id) + "____" + moment_labels.at(cur_id), false);
         }
     }
 
@@ -250,8 +301,15 @@ void MintGUI::gui_callback()
     ///////////////////////////////////////////////////////////////////////////
 
     ImGui::PushItemWidth(300);
-    ImGui::InputTextWithHint("Mesh Path", "enter rel or abs path, or use picker button below.", path_mesh, 512);
+    ImGui::InputTextWithHint("", "enter rel or abs path, or use picker button.", path_mesh, 512);   
     ImGui::PopItemWidth();
+    ImGui::SameLine();
+    HelpMarker("Mesh Path");
+    ImGui::SameLine();
+
+
+    
+
 
     if (ImGui::Button("Pick .mesh")) {
     // executes when button is pressed
@@ -276,8 +334,6 @@ void MintGUI::gui_callback()
         }
     }
 
-    ImGui::SameLine();
-
     if (ImGui::Button("(re)load view mesh")) {
         auto cur_path_parts = fileparts(path_mesh);
         std::cout << cur_path_parts.ext << std::endl;
@@ -300,11 +356,13 @@ void MintGUI::gui_callback()
     ///////////////////////////////////////////////////////////////////////////
 
         ImGui::PushItemWidth(300);
-    ImGui::InputTextWithHint("Mint output directory", "enter rel or abs path, or use picker button below.", path_outdir, IM_ARRAYSIZE(path_outdir));
+    ImGui::InputTextWithHint("", "enter rel or abs path, or use picker button below.", path_outdir, IM_ARRAYSIZE(path_outdir));
     ImGui::PopItemWidth();
 
 
-
+    ImGui::SameLine();
+    HelpMarker("Specify directory to load a previous run, or to choose output for next run");
+    ImGui::SameLine();
 
 
     if (ImGui::Button("Pick mint output dir")) {
@@ -312,9 +370,9 @@ void MintGUI::gui_callback()
         strncpy(path_outdir, tmp_path_outdir, 512);
     }
 
-    ImGui::SameLine();
+ 
     
-    if (ImGui::Button("Create or Load")) {
+    if (ImGui::Button("(re)load or create directory")) {
 
       polyscope::warning("This directory did not exist, creating it");
     // executes when button is pressed
@@ -347,40 +405,31 @@ void MintGUI::gui_callback()
     }
 
   
-    if (ImGui::Button("Run Mint")) {
-    // executes when button is pressed
-    // directory_path = fileSelectSubroutine();
-    }
 
-
-
-if (ImGui::RadioButton("Exact", cur_solver == Mint_Linear_Solver::exact))  { cur_solver = Mint_Linear_Solver::exact; } ImGui::SameLine();
-if (ImGui::RadioButton("GMRes", cur_solver == Mint_Linear_Solver::gmres))  { cur_solver = Mint_Linear_Solver::gmres; } 
-
-
- 
 
 
     ///////////////////////////////////////////////////////////////////////////
 
     ImGui::PushItemWidth(300);
-    ImGui::InputTextWithHint("Bound Constraints (moment space)", "enter rel or abs path, or use picker button below.", path_constraints, 512);
+    ImGui::InputTextWithHint("", "enter rel or abs path, or use picker button below.", path_constraints, 512);
     ImGui::PopItemWidth();
-
-
+    ImGui::SameLine();
+    HelpMarker("Hard Boundary Constraints, in moment space, sparse representation");
+    ImGui::SameLine();
 
     if (ImGui::Button("Pick .bound")) {
         char* tmp_path_constraints = fileSelectSubroutine();
         strncpy(path_constraints, tmp_path_constraints, 512);
     }
 
-    ImGui::SameLine();
+
     
     if (ImGui::Button("(re)Load Boundary")) {
 
       polyscope::warning("The chosen .bound file does not match the loaded mesh.");
     // executes when button is pressed
     // directory_path = fileSelectSubroutine();
+      show_constraint_vals();
     }
 
 
@@ -391,18 +440,44 @@ if (ImGui::RadioButton("GMRes", cur_solver == Mint_Linear_Solver::gmres))  { cur
 
     }
 
-    ImGui::PushItemWidth(300);
-   ImGui::SliderFloat("Exploded Spacing", &exploded_spacing, 0.0f, 50.0f, "ratio = %.3f");
-    ImGui::PopItemWidth();
+    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+
+    if (ImGui::TreeNode("Exploded GUI options"))
+    {
+
+        ImGui::PushItemWidth(100);
+        ImGui::SliderFloat("Exploded Spacing", &exploded_spacing, 0.0f, 150.0f, "ratio = %.3f");
+        ImGui::PopItemWidth();
+
+        ImGui::Text("Which moments to show");
+        if (ImGui::RadioButton("4th", moment_view_mode == Moments_To_Show::fourth))  
+        { 
+            moment_view_mode = Moments_To_Show::fourth; 
+            // polyscope::state::lengthScale = 5.;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("2nd", moment_view_mode == Moments_To_Show::second))  { moment_view_mode = Moments_To_Show::second; } ImGui::SameLine();
+        if (ImGui::RadioButton("both", moment_view_mode == Moments_To_Show::both))  { moment_view_mode = Moments_To_Show::both; } 
+
+
+
+        if (ImGui::Checkbox("show boundary", &showBoundary)) { show_constraint_vals(); }ImGui::SameLine();
+        if (ImGui::Checkbox("show interior tets", &showInteriorTets)) { show_constraint_vals(); }
+
+
+        ImGui::TreePop();
+
+    }
+
 
     if (ImGui::Button("Project Bound to closest GL(3) field")) {
     // executes when button is pressed
     // directory_path = fileSelectSubroutine();
+    
     }
 
 
 
-
+/*
 
 
     static ImGuiTextFilter filter;
@@ -433,6 +508,29 @@ if (ImGui::RadioButton("GMRes", cur_solver == Mint_Linear_Solver::gmres))  { cur
 	if (ImGui::Button("hi")) {
 		polyscope::warning("hi");
 	}
+    */
+
+
+
+    if (ImGui::Button("Run Mint")) {
+    // executes when button is pressed
+    // directory_path = fileSelectSubroutine();
+        polyscope::warning("NOT IMPLEMENTED");
+    }
+
+    ImGui::SameLine();
+    HelpMarker("TODO: start mint call in seperate thread");
+    ImGui::SameLine();
+
+    if (ImGui::RadioButton("Exact", cur_solver == Mint_Linear_Solver::exact))  { cur_solver = Mint_Linear_Solver::exact; } ImGui::SameLine();
+    if (ImGui::RadioButton("GMRes", cur_solver == Mint_Linear_Solver::gmres))  { cur_solver = Mint_Linear_Solver::gmres; } 
+
+
+ 
+
+
+
+
 
     ImGui::ShowDemoWindow(); 
 
