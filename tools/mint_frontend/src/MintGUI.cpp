@@ -67,7 +67,10 @@ static void HelpMarker(const char* desc)
 
 
 
-        exploded_spacing = 120.;
+        // exploded_spacing = 120.; // square
+
+        exploded_spacing = 22.;
+
         sel_idx = -1;
 
 
@@ -288,22 +291,37 @@ void MintGUI::set_base_mesh()
 void MintGUI::load_state_from_output_dir()
 {
     folder_contents.clear();
+    file_names.clear();
     for (const auto & entry : fs::directory_iterator(path_outdir))
     {
         // std::cout << entry.path() << std::endl;
         std::string tmp = entry.path();
         FileParts fp = fileparts(tmp);
-        if (fp.ext == ".mom")
+        if (fp.ext == ".mom"){
             folder_contents.push_back( entry.path() );
+            file_names.push_back( fp.name );
+        }
+
+        if (fp.ext == ".mesh")
+        {
+            const char* tmp_path_mesh = tmp.c_str();
+            std::cout << tmp_path_mesh << std::endl;
+            path_mesh = new char[512];
+            strncpy(path_mesh, tmp_path_mesh, 512);
+        }
+            // folder_contents.push_back( entry.path() );
     }
 
     sel_idx = -1;
 
-    for (int i = 0; i < folder_contents.size(); i++)
-    {
-        std::cout << folder_contents.at(i) << std::endl;
+    // for (int i = 0; i < folder_contents.size(); i++)
+    // {
+    //     std::cout << folder_contents.at(i) << std::endl;
 
-    }
+    // }
+
+    set_base_mesh();
+    show_base_mesh();
 
 }
 
@@ -349,6 +367,7 @@ void MintGUI::gui_callback()
     if (ImGui::Button("Pick .mesh")) {
     // executes when button is pressed
         char* tmp_path_mesh = fileSelectSubroutine();
+        path_mesh = new char[512];
         strncpy(path_mesh, tmp_path_mesh, 512);
         auto cur_path_parts = fileparts(path_mesh);
         std::cout << cur_path_parts.ext << std::endl;
@@ -391,7 +410,7 @@ void MintGUI::gui_callback()
     ///////////////////////////////////////////////////////////////////////////
 
         ImGui::PushItemWidth(300);
-    ImGui::InputTextWithHint("2", "enter rel or abs path, or use picker.", path_outdir, IM_ARRAYSIZE(path_outdir));
+    ImGui::InputTextWithHint("2", "enter rel or abs path, or use picker.", path_outdir, 512);
     ImGui::PopItemWidth();
 
 
@@ -444,24 +463,46 @@ void MintGUI::gui_callback()
 
     if (ImGui::TreeNode("Contents of chosen dir"))
     {
-             ImGui::TreePop();
+             
+        for (int i = 0; i < file_names.size(); i++)
+        {
+            if (ImGui::Selectable(file_names.at(i).c_str(), sel_idx == i))
+            {
+                sel_idx = i;
+                path_constraints = new char[512];
+                strncpy(path_constraints, folder_contents.at(i).c_str(), 512);
+                // std::cout << path_constraints << std::endl;
+                show_constraint_vals();
+            }
+
+        }
+
+
+        ImGui::PushItemWidth(300);
+        ImGui::InputTextWithHint("3", "path to exploded moments", path_constraints, 512);
+        ImGui::PopItemWidth();
+        ImGui::SameLine();
+        HelpMarker("Choose moments to visualize in a different directory");
+        ImGui::SameLine();
+
+        if (ImGui::Button("Pick .mom")) {
+            char* tmp_path_constraints = fileSelectSubroutine();
+            path_constraints = new char[512];
+            strncpy(path_constraints, tmp_path_constraints, 512);
+            show_constraint_vals();
+
+            sel_idx = -1;
+
+        }
+
+        ImGui::TreePop();
+
     }
 
 
 
     ///////////////////////////////////////////////////////////////////////////
 
-    ImGui::PushItemWidth(300);
-    ImGui::InputTextWithHint("3", "path to exploded moments", path_constraints, 512);
-    ImGui::PopItemWidth();
-    ImGui::SameLine();
-    HelpMarker("Hard Boundary Constraints, in moment space, sparse representation");
-    ImGui::SameLine();
-
-    if (ImGui::Button("Pick .bound")) {
-        char* tmp_path_constraints = fileSelectSubroutine();
-        strncpy(path_constraints, tmp_path_constraints, 512);
-    }
 
 
     

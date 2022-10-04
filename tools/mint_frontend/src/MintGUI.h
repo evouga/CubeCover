@@ -56,6 +56,8 @@ namespace MintFrontend
         void gui_callback();
 
         void save_current_state();
+        void save_polyscope_config();
+        void load_prev_polyscope_config();
 
         FileParts fileparts(const std::string &fullpath);
 
@@ -89,6 +91,7 @@ namespace MintFrontend
 
         std::vector<std::string>  moment_labels; 
         std::vector<std::string>  folder_contents; 
+        std::vector<std::string>  file_names; 
 
         float exploded_spacing;
 
