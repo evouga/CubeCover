@@ -83,6 +83,7 @@ namespace MintFrontend
         Eigen::MatrixXi T;
         Eigen::MatrixXi F;
         Eigen::MatrixXi bdryF;
+        Eigen::MatrixXd M_curr;
 
         Mint_Linear_Solver cur_solver;
         Moments_To_Show moment_view_mode;

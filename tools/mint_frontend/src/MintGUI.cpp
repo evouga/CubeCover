@@ -10,6 +10,7 @@
 // #include <imgui/imgui.h>  
 #include "TetMeshConnectivity.h"
 #include "readMeshFixed.h"
+#include "ReadMoments.h"
 
 #include <misc/cpp/imgui_stdlib.h>
 #include <algorithm>
@@ -169,6 +170,8 @@ void MintGUI::show_constraint_vals()
                 cur_mesh->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
                 cur_mesh->resetTransform();
                 cur_mesh->translate(shift);
+                Eigen::VectorXd tmp_mvals = M_curr.block(0,cur_id,mesh.nTets(),cur_id+1);
+                cur_mesh->addCellScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
             }
 
             if (showBoundary)
@@ -181,6 +184,10 @@ void MintGUI::show_constraint_vals()
                 surf_mesh->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
                 surf_mesh->resetTransform();
                 surf_mesh->translate(shift);
+
+                std::cout << M_curr.rows()-mesh.nTets() << std::endl;
+                Eigen::VectorXd tmp_mvals = M_curr.block(mesh.nTets()+1,cur_id,bdryF.rows(),cur_id+1);
+                surf_mesh->addFaceScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
             }
 
 
@@ -471,8 +478,10 @@ void MintGUI::gui_callback()
                 sel_idx = i;
                 path_constraints = new char[512];
                 strncpy(path_constraints, folder_contents.at(i).c_str(), 512);
+                CubeCover::readMoments(path_constraints, M_curr, true);
                 // std::cout << path_constraints << std::endl;
                 show_constraint_vals();
+
             }
 
         }
