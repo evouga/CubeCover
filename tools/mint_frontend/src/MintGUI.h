@@ -93,6 +93,7 @@ namespace MintFrontend
         std::vector<std::string>  moment_labels; 
         std::vector<std::string>  folder_contents; 
         std::vector<std::string>  file_names; 
+        std::vector<std::string>  mesh_names; // TODO
 
         float exploded_spacing;
 

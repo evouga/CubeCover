@@ -1,4 +1,6 @@
 #include <igl/file_dialog_open.h>
+#include <igl/readOBJ.h>
+#include <igl/bfs_orient.h>
 
 #include "MintGUI.h"
 #include "polyscope/polyscope.h"
@@ -185,8 +187,8 @@ void MintGUI::show_constraint_vals()
                 surf_mesh->resetTransform();
                 surf_mesh->translate(shift);
 
-                std::cout << M_curr.rows()-mesh.nTets() << std::endl;
-                Eigen::VectorXd tmp_mvals = M_curr.block(mesh.nTets()+1,cur_id,bdryF.rows(),cur_id+1);
+                std::cout << M_curr.rows()-mesh.nTets() << " diff " << M_curr.rows()-mesh.nTets() - bdryF.rows() << std::endl;
+                Eigen::VectorXd tmp_mvals = M_curr.block(mesh.nTets(),cur_id,bdryF.rows(),cur_id+1);
                 surf_mesh->addFaceScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
             }
 
@@ -259,36 +261,48 @@ void MintGUI::set_base_mesh()
         mesh = CubeCover::TetMeshConnectivity(T);
         // make boundary mesh out of volume mesh
             // make a mesh out of all of the boundary faces
-        int nbdry = 0;
-        int nfaces = mesh.nFaces();
-        for (int i = 0; i < nfaces; i++)
-        {
-            if (mesh.isBoundaryFace(i))
-                nbdry++;
-        }
 
-        bdryF.resize(nbdry, 3);
-        // std::cout << "nbdry" << nbdry << std::endl<< std::endl<< std::endl;
-        // std::cout << "bdryF " << bdryF.size() << std::endl;
-        int curidx = 0;
-        for (int i = 0; i < nfaces; i++)
-        {
-            if (mesh.isBoundaryFace(i))
-            {
-                for (int j = 0; j < 3; j++)
-                {
-                    bdryF(curidx, j) = mesh.faceVertex(i, j);
+        auto parts = fileparts(path_mesh);
+        
+        Eigen::MatrixXd bdryV;
+        Eigen::MatrixXi tmp;
+
+        igl::readOBJ(parts.path + parts.name + ".obj", bdryV, bdryF);
+
+        igl::bfs_orient(bdryF, bdryF, tmp);
+        
+        // int nbdry = 0;
+        // int nfaces = mesh.nFaces();
+        // for (int i = 0; i < nfaces; i++)
+        // {
+        //     if (mesh.isBoundaryFace(i))
+        //         nbdry++;
+        // }
+
+        // bdryF.resize(nbdry, 3);
+        // // std::cout << "nbdry" << nbdry << std::endl<< std::endl<< std::endl;
+        // // std::cout << "bdryF " << bdryF.size() << std::endl;
+        // int curidx = 0;
+        // for (int i = 0; i < nfaces; i++)
+        // {
+        //     if (mesh.isBoundaryFace(i))
+        //     {
+        //         for (int j = 0; j < 3; j++)
+        //         {
+        //             bdryF(curidx, j) = mesh.faceVertex(i, j);
                     
-                }
-                // fix triangle orientations
-                int tet = mesh.faceTet(i, 0);
-                if (tet == -1)
-                {
-                    std::swap(bdryF(curidx, 0), bdryF(curidx, 1));
-                }
-                curidx++;
-            }
-        }
+        //         }
+        //         // fix triangle orientations
+        //         int tet = mesh.faceTet(i, 0);
+        //         if (tet == -1)
+        //         {
+        //             std::swap(bdryF(curidx, 0), bdryF(curidx, 1));
+        //         }
+        //         curidx++;
+        //     }
+        // }
+
+        
         show_base_mesh();
     }
 
@@ -320,6 +334,9 @@ void MintGUI::load_state_from_output_dir()
     }
 
     sel_idx = -1;
+
+    std::sort(folder_contents.begin(), folder_contents.end());
+    std::sort(file_names.begin(), file_names.end());
 
     // for (int i = 0; i < folder_contents.size(); i++)
     // {
@@ -471,39 +488,55 @@ void MintGUI::gui_callback()
     if (ImGui::TreeNode("Contents of chosen dir"))
     {
              
-        for (int i = 0; i < file_names.size(); i++)
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+
+        if (ImGui::TreeNode("TODO: Select Mesh from directory"))
         {
-            if (ImGui::Selectable(file_names.at(i).c_str(), sel_idx == i))
+
+            ImGui::TreePop();
+        }
+        
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+
+        if (ImGui::TreeNode("Select Moments to Visualize"))
+        {
+             
+
+            for (int i = 0; i < file_names.size(); i++)
             {
-                sel_idx = i;
-                path_constraints = new char[512];
-                strncpy(path_constraints, folder_contents.at(i).c_str(), 512);
-                CubeCover::readMoments(path_constraints, M_curr, true);
-                // std::cout << path_constraints << std::endl;
-                show_constraint_vals();
+                if (ImGui::Selectable(file_names.at(i).c_str(), sel_idx == i))
+                {
+                    sel_idx = i;
+                    path_constraints = new char[512];
+                    strncpy(path_constraints, folder_contents.at(i).c_str(), 512);
+                    CubeCover::readMoments(path_constraints, M_curr, true);
+                    // std::cout << path_constraints << std::endl;
+                    show_constraint_vals();
+
+                }
 
             }
 
+
+            ImGui::PushItemWidth(300);
+            ImGui::InputTextWithHint("3", "path to exploded moments", path_constraints, 512);
+            ImGui::PopItemWidth();
+            ImGui::SameLine();
+            HelpMarker("Choose moments to visualize in a different directory");
+            ImGui::SameLine();
+
+            if (ImGui::Button("Pick .mom")) {
+                char* tmp_path_constraints = fileSelectSubroutine();
+                path_constraints = new char[512];
+                strncpy(path_constraints, tmp_path_constraints, 512);
+                show_constraint_vals();
+
+                sel_idx = -1;
+
+            }
+
+            ImGui::TreePop();
         }
-
-
-        ImGui::PushItemWidth(300);
-        ImGui::InputTextWithHint("3", "path to exploded moments", path_constraints, 512);
-        ImGui::PopItemWidth();
-        ImGui::SameLine();
-        HelpMarker("Choose moments to visualize in a different directory");
-        ImGui::SameLine();
-
-        if (ImGui::Button("Pick .mom")) {
-            char* tmp_path_constraints = fileSelectSubroutine();
-            path_constraints = new char[512];
-            strncpy(path_constraints, tmp_path_constraints, 512);
-            show_constraint_vals();
-
-            sel_idx = -1;
-
-        }
-
         ImGui::TreePop();
 
     }
