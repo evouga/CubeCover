@@ -19,6 +19,10 @@ namespace MintFrontend
 
     enum Mint_Linear_Solver{ exact, gmres };
 
+    enum Mint_Integrability_Mode{ free, mint };
+    enum Mint_Frame_Projection{ onshell, offshell };
+
+
     enum Moments_To_Show{ second, fourth, both };
 
 
@@ -86,6 +90,9 @@ namespace MintFrontend
         Eigen::MatrixXd M_curr;
 
         Mint_Linear_Solver cur_solver;
+        Mint_Integrability_Mode mint_mode;
+        Mint_Frame_Projection shell_mode;
+
         Moments_To_Show moment_view_mode;
         bool showBoundary;
         bool showInteriorTets; 

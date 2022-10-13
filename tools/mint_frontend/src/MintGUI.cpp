@@ -58,7 +58,7 @@ static void HelpMarker(const char* desc)
         mesh = CubeCover::TetMeshConnectivity();
         moment_view_mode = Moments_To_Show::fourth;
 
-        showBoundary = true;
+        showBoundary = false;
         showInteriorTets = true;
 
 
@@ -75,6 +75,10 @@ static void HelpMarker(const char* desc)
         exploded_spacing = 22.;
 
         sel_idx = -1;
+
+        cur_solver = Mint_Linear_Solver::exact;
+        mint_mode = Mint_Integrability_Mode::free;
+        shell_mode = Mint_Frame_Projection::offshell;
 
 
         // Load config file here. 
@@ -183,11 +187,11 @@ void MintGUI::show_constraint_vals()
 
 
 
-                surf_mesh->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
+                surf_mesh->setEdgeWidth(1)->setTransparency(.9)->rescaleToUnit();
                 surf_mesh->resetTransform();
                 surf_mesh->translate(shift);
 
-                std::cout << M_curr.rows()-mesh.nTets() << " diff " << M_curr.rows()-mesh.nTets() - bdryF.rows() << std::endl;
+                // std::cout << M_curr.rows()-mesh.nTets() << " diff " << M_curr.rows()-mesh.nTets() - bdryF.rows() << std::endl;
                 Eigen::VectorXd tmp_mvals = M_curr.block(mesh.nTets(),cur_id,bdryF.rows(),cur_id+1);
                 surf_mesh->addFaceScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
             }
@@ -270,6 +274,8 @@ void MintGUI::set_base_mesh()
         igl::readOBJ(parts.path + parts.name + ".obj", bdryV, bdryF);
 
         igl::bfs_orient(bdryF, bdryF, tmp);
+
+        std::cout << "num flipped face ids " << tmp.size() << std::endl;
         
         // int nbdry = 0;
         // int nfaces = mesh.nFaces();
@@ -430,6 +436,26 @@ void MintGUI::gui_callback()
     }
 
 
+    ImGui::SameLine();
+
+    if (ImGui::Button("Run Full Pipeline")) {
+        // auto cur_path_parts = fileparts(path_mesh);
+        // std::cout << cur_path_parts.ext << std::endl;
+
+        // std::string data = cur_path_parts.ext;
+        // std::transform(data.begin(), data.end(), data.begin(),
+        //     [](unsigned char c){ return std::tolower(c); });
+        // if (data == ".mesh" )
+        // {
+        //     set_base_mesh();
+        // }
+        // else 
+        // {
+            polyscope::warning("TODO: Not implemented");
+        // }
+    }
+
+
 
     ///////////////////////////////////////////////////////////////////////////
 
@@ -554,7 +580,33 @@ void MintGUI::gui_callback()
     // executes when button is pressed
     // directory_path = fileSelectSubroutine();
       show_constraint_vals();
+    }     
+    
+    ImGui::SameLine();
+
+    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+
+    if (ImGui::TreeNode("Exploded Boundary Select options"))
+    {
+
+        // ImGui::Text("Start penzil.app to annotate model");
+
+        // ImGui::Text("Load From File");
+
+    if (ImGui::Button("Start penzil.app to annotate model")) {
+
+        show_constraint_vals();
+
     }
+    if (ImGui::Button("Load From File")) {
+
+        show_constraint_vals();
+    }
+
+        ImGui::TreePop();
+
+    }
+
 
 
 
@@ -646,8 +698,67 @@ void MintGUI::gui_callback()
     HelpMarker("TODO: start mint call in seperate thread");
     ImGui::SameLine();
 
+
+
+
+    if (ImGui::TreeNode("Exploded Solver options"))
+    {
+
+
+
+        ImGui::Text("Integrability Mode");
+        if (ImGui::RadioButton("Free", mint_mode == Mint_Integrability_Mode::free))  
+        { 
+            mint_mode = Mint_Integrability_Mode::free;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("Mint (the main attraction!)", mint_mode == Mint_Integrability_Mode::mint))  
+        { 
+            mint_mode = Mint_Integrability_Mode::mint;
+        } 
+
+
+        ImGui::Text("Shell (local projection) Switch");
+        if (ImGui::RadioButton("Off-Shell", shell_mode == Mint_Frame_Projection::offshell))  
+        { 
+            shell_mode = Mint_Frame_Projection::offshell;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("On-Shell", shell_mode == Mint_Frame_Projection::onshell))  
+        { 
+            shell_mode = Mint_Frame_Projection::onshell;
+        } 
+
+
+        ImGui::Text(" \\ solver good, gmres for big models ");
     if (ImGui::RadioButton("Exact", cur_solver == Mint_Linear_Solver::exact))  { cur_solver = Mint_Linear_Solver::exact; } ImGui::SameLine();
     if (ImGui::RadioButton("GMRes", cur_solver == Mint_Linear_Solver::gmres))  { cur_solver = Mint_Linear_Solver::gmres; } 
+
+
+
+
+
+        // ImGui::PushItemWidth(100);
+        // ImGui::SliderFloat("Exploded Spacing", &exploded_spacing, 0.0f, 150.0f, "ratio = %.3f");
+        // ImGui::PopItemWidth();
+
+        // ImGui::Text("Which moments to show");
+        // if (ImGui::RadioButton("4th", moment_view_mode == Moments_To_Show::fourth))  
+        // { 
+        //     moment_view_mode = Moments_To_Show::fourth; 
+        //     // polyscope::state::lengthScale = 5.;
+        // } ImGui::SameLine();
+        // if (ImGui::RadioButton("2nd", moment_view_mode == Moments_To_Show::second))  { moment_view_mode = Moments_To_Show::second; } ImGui::SameLine();
+        // if (ImGui::RadioButton("both", moment_view_mode == Moments_To_Show::both))  { moment_view_mode = Moments_To_Show::both; } 
+
+
+
+        // if (ImGui::Checkbox("show boundary", &showBoundary)) { show_constraint_vals(); }ImGui::SameLine();
+        // if (ImGui::Checkbox("show interior tets", &showInteriorTets)) { show_constraint_vals(); }
+
+
+        ImGui::TreePop();
+
+    }
+
 
 
  
