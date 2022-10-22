@@ -79,6 +79,7 @@ static void HelpMarker(const char* desc)
         cur_solver = Mint_Linear_Solver::exact;
         mint_mode = Mint_Integrability_Mode::free;
         shell_mode = Mint_Frame_Projection::offshell;
+        metric_mode = Mint_Moment_Metric::four;
 
 
         // Load config file here. 
@@ -725,6 +726,25 @@ void MintGUI::gui_callback()
         if (ImGui::RadioButton("On-Shell", shell_mode == Mint_Frame_Projection::onshell))  
         { 
             shell_mode = Mint_Frame_Projection::onshell;
+        } 
+
+
+        ImGui::Text("Delta Metric");
+        if (ImGui::RadioButton("Fourth Moments", metric_mode == Mint_Moment_Metric::four))  
+        { 
+            metric_mode = Mint_Moment_Metric::four;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("Second Moments", metric_mode == Mint_Moment_Metric::sec))  
+        { 
+            metric_mode = Mint_Moment_Metric::sec;
+        } 
+        if (ImGui::RadioButton("Scale Invariant: 4 + 2 \\oplus 2", metric_mode == Mint_Moment_Metric::four_plus_two_tensor_two))  
+        { 
+            metric_mode = Mint_Moment_Metric::four_plus_two_tensor_two;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("Scale Dependent: 4 + 2", metric_mode == Mint_Moment_Metric::four_plus_two))  
+        { 
+            metric_mode = Mint_Moment_Metric::four_plus_two;
         } 
 
 

@@ -21,9 +21,11 @@ namespace MintFrontend
 
     enum Mint_Integrability_Mode{ free, mint };
     enum Mint_Frame_Projection{ onshell, offshell };
-
+    enum Mint_Moment_Metric{ four, sec, four_plus_two, four_plus_two_tensor_two };
 
     enum Moments_To_Show{ second, fourth, both };
+
+
 
 
    class MintGUI
@@ -92,6 +94,7 @@ namespace MintFrontend
         Mint_Linear_Solver cur_solver;
         Mint_Integrability_Mode mint_mode;
         Mint_Frame_Projection shell_mode;
+        Mint_Moment_Metric metric_mode;
 
         Moments_To_Show moment_view_mode;
         bool showBoundary;
