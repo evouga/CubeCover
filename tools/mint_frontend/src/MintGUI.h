@@ -21,6 +21,14 @@ namespace MintFrontend
 
     enum Mint_Integrability_Mode{ free, mint };
     enum Mint_Frame_Projection{ onshell, offshell };
+
+// TODO 
+    enum Mint_Laplacian_Metric{ combinatorial, barycentric };
+    enum Mint_Boundary_Conditions{ unit_normal, soft_constraint, radial, stroke };
+    enum Mint_Init_Lf{ as_smooth_as_possible, random_frames, zero };
+
+
+
     enum Mint_Moment_Metric{ four, sec, four_plus_two, four_plus_two_tensor_two };
 
     enum Moments_To_Show{ second, fourth, both };
@@ -103,6 +111,7 @@ namespace MintFrontend
         std::vector<std::string>  moment_labels; 
         std::vector<std::string>  folder_contents; 
         std::vector<std::string>  file_names; 
+        std::vector<std::string>  adj_folder_names; 
         std::vector<std::string>  mesh_names; // TODO
 
         float exploded_spacing;

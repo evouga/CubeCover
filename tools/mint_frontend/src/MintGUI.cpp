@@ -320,6 +320,47 @@ void MintGUI::load_state_from_output_dir()
 {
     folder_contents.clear();
     file_names.clear();
+    adj_folder_names.clear();
+
+    int size = strlen(path_outdir);
+    char tmp_path[size];
+
+    int n = sprintf (tmp_path, "%.*s", size-1, path_outdir);
+
+    // strcpy(tmp_path, path_outdir);
+
+    // if (path_outdir[size - 1] == '/')
+
+    // path_outdir[size - 1] = '\0';
+    // memset(tmp_path, '\0', sizeof(tmp_path)-1);
+    std::cout << "Load_State_From_Output_Dir: " << tmp_path << "size: " << size << std::endl;
+    FileParts fp_tmp = fileparts(tmp_path);
+
+    std::cout << "orig_path: " << path_outdir << std::endl;
+    std::cout << "path: " << fp_tmp.path << std::endl << "name: " << fp_tmp.name << std::endl; 
+
+
+    for (const auto & entry : fs::directory_iterator(fp_tmp.path))
+    {
+        std::cout << entry.path() << std::endl;
+        // std::string tmp = entry.path();
+        // FileParts fp = fileparts(tmp);
+        // if (fp.ext == ".mom"){
+        //     folder_contents.push_back( entry.path() );
+        //     file_names.push_back( fp.name );
+        // }
+
+        // if (fp.ext == ".mesh")
+        // {
+        //     const char* tmp_path_mesh = tmp.c_str();
+        //     std::cout << tmp_path_mesh << std::endl;
+        //     path_mesh = new char[512];
+        //     strncpy(path_mesh, tmp_path_mesh, 512);
+        // }
+        //     // folder_contents.push_back( entry.path() );
+    }
+
+
     for (const auto & entry : fs::directory_iterator(path_outdir))
     {
         // std::cout << entry.path() << std::endl;
