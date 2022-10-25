@@ -50,8 +50,9 @@ namespace MintFrontend
 
 
         void show_base_mesh();
-        void show_constraint_vals();
-        void show_moments();
+		void show_exploded_moments(Moments_To_Show moment_view_mode);
+		void show_moments_2nd();
+        void show_moments_4th();
 
         // for some reason, polyscope 
         void clear_polyscope_state();
@@ -104,7 +105,7 @@ namespace MintFrontend
         Mint_Frame_Projection shell_mode;
         Mint_Moment_Metric metric_mode;
 
-        Moments_To_Show moment_view_mode;
+		Moments_To_Show moment_view_mode;
         bool showBoundary;
         bool showInteriorTets; 
 

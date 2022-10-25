@@ -56,7 +56,8 @@ static void HelpMarker(const char* desc)
         path_outdir = new char[512];
 
         mesh = CubeCover::TetMeshConnectivity();
-        moment_view_mode = Moments_To_Show::fourth;
+		moment_view_mode = Moments_To_Show::fourth;
+		moment_view_mode_prev = Moments_To_Show::fourth;
 
         showBoundary = false;
         showInteriorTets = true;
@@ -153,7 +154,7 @@ void MintGUI::show_base_mesh()
 
 
 
-void MintGUI::show_constraint_vals()
+void MintGUI::show_moments_4th()
 {
 
     std::cout << "show_constraint_vals" << std::endl;
@@ -212,6 +213,66 @@ void MintGUI::show_constraint_vals()
 }
 
 
+void MintGUI::show_moments_2nd()
+{
+
+	std::cout << "show_constraint_vals" << std::endl;
+	clear_polyscope_state();
+	polyscope::options::automaticallyComputeSceneExtents = true;
+	// polyscope::state::lengthScale = polyscope::state::lengthScale * 1/5.;
+
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 5; j++)
+		{
+			int cur_id = i * 5 + j;
+			glm::vec3 shift(-j * exploded_spacing, -i * exploded_spacing, 0);
+
+			if (showInteriorTets)
+			{
+				// auto cur_mesh = polyscope::registerTetMesh(moment_labels.at(cur_id) + "_tm_" + std::to_string(1000000 + cur_id), V, T);
+				auto cur_mesh = polyscope::registerTetMesh(std::to_string(10000 + cur_id) + "____" + moment_labels.at(cur_id), V, T);
+
+
+				cur_mesh->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
+				cur_mesh->resetTransform();
+				cur_mesh->translate(shift);
+				Eigen::VectorXd tmp_mvals = M_curr.block(0, cur_id, mesh.nTets(), cur_id + 1);
+				cur_mesh->addCellScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
+			}
+
+			if (showBoundary)
+			{
+				// auto surf_mesh = polyscope::registerSurfaceMesh(moment_labels.at(cur_id) + "_sm_" + std::to_string(1000000 + cur_id), V, bdryF);
+				auto surf_mesh = polyscope::registerSurfaceMesh(std::to_string(20000 + cur_id) + "____" + moment_labels.at(cur_id), V, bdryF);
+
+
+
+				surf_mesh->setEdgeWidth(1)->setTransparency(.9)->rescaleToUnit();
+				surf_mesh->resetTransform();
+				surf_mesh->translate(shift);
+
+				// std::cout << M_curr.rows()-mesh.nTets() << " diff " << M_curr.rows()-mesh.nTets() - bdryF.rows() << std::endl;
+				Eigen::VectorXd tmp_mvals = M_curr.block(mesh.nTets(), cur_id, bdryF.rows(), cur_id + 1);
+				surf_mesh->addFaceScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
+			}
+
+
+			// std::cout << "tet_mesh_" + std::to_string(1000 + cur_id) + " " <<  glm::to_string(cur_mesh->getTransform()) << std::endl;
+		}
+	}
+	// polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7);
+	// polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7);
+	polyscope::options::automaticallyComputeSceneExtents = false;
+	polyscope::state::lengthScale = polyscope::state::lengthScale * 3.;
+
+	polyscope::view::resetCameraToHomeView();
+	// polyscope::state::boundingBox = 
+	//     std::tuple<glm::vec3, glm::vec3>{ {-2.5, -1.5, -1.}, {2.5, 1.5, 1.} };
+}
+
+
+
 
 
 
@@ -225,24 +286,11 @@ void MintGUI::clear_polyscope_state()
     polyscope::removeStructure("tet_mesh", false);
     polyscope::removeStructure("surf_mesh", false);
 
-
-    for( int i = 0; i < 3; i++)
-    {
-        for( int j = 0; j < 5; j++)
-        {
-            int cur_id = i*5 + j;
-            polyscope::removeStructure(std::to_string(10000 + cur_id) + "____" + moment_labels.at(cur_id), false);
-        }
-    }
-
-        for( int i = 0; i < 3; i++)
-    {
-        for( int j = 0; j < 5; j++)
-        {
-            int cur_id = i*5 + j;
-            polyscope::removeStructure(std::to_string(20000 + cur_id) + "____" + moment_labels.at(cur_id), false);
-        }
-    }
+	for (int cur_id = 0; cur_id < 21; cur_id++)
+	{
+		polyscope::removeStructure(std::to_string(10000 + cur_id) + "____" + moment_labels.at(cur_id), false);
+		polyscope::removeStructure(std::to_string(20000 + cur_id) + "____" + moment_labels.at(cur_id), false);
+	}
 
 }
 
@@ -322,8 +370,8 @@ void MintGUI::load_state_from_output_dir()
     file_names.clear();
     adj_folder_names.clear();
 
-    int size = strlen(path_outdir);
-    char tmp_path[size];
+    const int size = strlen(path_outdir);
+    char tmp_path[512];
 
     int n = sprintf (tmp_path, "%.*s", size-1, path_outdir);
 
@@ -361,13 +409,13 @@ void MintGUI::load_state_from_output_dir()
     }
 
 
-    for (const auto & entry : fs::directory_iterator(path_outdir))
+    for (const auto  &entry : fs::directory_iterator(path_outdir))
     {
         // std::cout << entry.path() << std::endl;
-        std::string tmp = entry.path();
+		std::string tmp =  entry.path().u8string();
         FileParts fp = fileparts(tmp);
         if (fp.ext == ".mom"){
-            folder_contents.push_back( entry.path() );
+            folder_contents.push_back( entry.path().u8string());
             file_names.push_back( fp.name );
         }
 
@@ -616,48 +664,7 @@ void MintGUI::gui_callback()
 
 
     
-    if (ImGui::Button("(re)Load Boundary")) {
-
-      polyscope::warning("The chosen .bound file does not match the loaded mesh.");
-    // executes when button is pressed
-    // directory_path = fileSelectSubroutine();
-      show_constraint_vals();
-    }     
-    
-    ImGui::SameLine();
-
-    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
-
-    if (ImGui::TreeNode("Exploded Boundary Select options"))
-    {
-
-        // ImGui::Text("Start penzil.app to annotate model");
-
-        // ImGui::Text("Load From File");
-
-    if (ImGui::Button("Start penzil.app to annotate model")) {
-
-        show_constraint_vals();
-
-    }
-    if (ImGui::Button("Load From File")) {
-
-        show_constraint_vals();
-    }
-
-        ImGui::TreePop();
-
-    }
-
-
-
-
-    if (ImGui::Button("Compute and Load normal boundary")) {
-
-        show_constraint_vals();
-
-    }
-
+  
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
 
     if (ImGui::TreeNode("Exploded GUI options"))
@@ -670,16 +677,27 @@ void MintGUI::gui_callback()
         ImGui::Text("Which moments to show");
         if (ImGui::RadioButton("4th", moment_view_mode == Moments_To_Show::fourth))  
         { 
-            moment_view_mode = Moments_To_Show::fourth; 
+            moment_view_mode = Moments_To_Show::fourth;
+			show_exploded_moments(moment_view_mode);
+
+
             // polyscope::state::lengthScale = 5.;
         } ImGui::SameLine();
-        if (ImGui::RadioButton("2nd", moment_view_mode == Moments_To_Show::second))  { moment_view_mode = Moments_To_Show::second; } ImGui::SameLine();
-        if (ImGui::RadioButton("both", moment_view_mode == Moments_To_Show::both))  { moment_view_mode = Moments_To_Show::both; } 
+        if (ImGui::RadioButton("2nd", moment_view_mode == Moments_To_Show::second))  
+		{ 
+			moment_view_mode = Moments_To_Show::second; 
+			show_exploded_moments(moment_view_mode);
+		} ImGui::SameLine();
+        if (ImGui::RadioButton("both", moment_view_mode == Moments_To_Show::both))  
+		{ 
+			moment_view_mode = Moments_To_Show::both; 
+			show_exploded_moments(moment_view_mode);
+		} 
 
 
 
-        if (ImGui::Checkbox("show boundary", &showBoundary)) { show_constraint_vals(); }ImGui::SameLine();
-        if (ImGui::Checkbox("show interior tets", &showInteriorTets)) { show_constraint_vals(); }
+		if (ImGui::Checkbox("show boundary", &showBoundary)) { show_exploded_moments(moment_view_mode); }ImGui::SameLine();
+        if (ImGui::Checkbox("show interior tets", &showInteriorTets)) { show_exploded_moments(moment_view_mode); }
 
 
         ImGui::TreePop();
@@ -792,6 +810,51 @@ void MintGUI::gui_callback()
         ImGui::Text(" \\ solver good, gmres for big models ");
     if (ImGui::RadioButton("Exact", cur_solver == Mint_Linear_Solver::exact))  { cur_solver = Mint_Linear_Solver::exact; } ImGui::SameLine();
     if (ImGui::RadioButton("GMRes", cur_solver == Mint_Linear_Solver::gmres))  { cur_solver = Mint_Linear_Solver::gmres; } 
+
+
+
+	if (ImGui::Button("(re)Load Boundary")) {
+
+		polyscope::warning("The chosen .bound file does not match the loaded mesh.");
+		// executes when button is pressed
+		// directory_path = fileSelectSubroutine();
+		show_exploded_moments(moment_view_mode);
+	}
+
+	ImGui::SameLine();
+
+	ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+
+	if (ImGui::TreeNode("Exploded Boundary Select options"))
+	{
+
+		// ImGui::Text("Start penzil.app to annotate model");
+
+		// ImGui::Text("Load From File");
+
+		if (ImGui::Button("Start penzil.app to annotate model")) {
+
+	//		show_exploded_moments(moment_view_mode);
+
+		}
+		if (ImGui::Button("Load From File")) {
+
+	//		show_exploded_moments(moment_view_mode);
+		}
+
+		ImGui::TreePop();
+
+	}
+
+
+
+
+	if (ImGui::Button("Compute and Load normal boundary")) {
+
+		show_exploded_moments(moment_view_mode);
+
+	}
+
 
 
 

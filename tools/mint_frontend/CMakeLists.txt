@@ -18,4 +18,6 @@ FetchContent_MakeAvailable(json)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 14)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD_REQUIRED ON)
 
-target_link_libraries(${PROJECT_NAME} cubecover polyscope nlohmann_json::nlohmann_json stdc++fs)
+target_link_libraries(${PROJECT_NAME} cubecover polyscope nlohmann_json::nlohmann_json )
+
+# stdc++fs
