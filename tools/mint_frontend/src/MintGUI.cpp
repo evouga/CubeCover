@@ -57,7 +57,6 @@ static void HelpMarker(const char* desc)
 
         mesh = CubeCover::TetMeshConnectivity();
 		moment_view_mode = Moments_To_Show::fourth;
-		moment_view_mode_prev = Moments_To_Show::fourth;
 
         showBoundary = false;
         showInteriorTets = true;
@@ -65,7 +64,10 @@ static void HelpMarker(const char* desc)
 
         const char *args[] = {"x^4", "x^3 y", "x^3 z", "x^2 y^2", "x^2 y z", 
                               "x^2 z^2", "x y^3", "x y^2 z", "x y z^2", "x z^3", 
-                              "y^4", "y^3 z", "y^2 z^2", "y z^3", "z^4"};
+                              "y^4", "y^3 z", "y^2 z^2", "y z^3", "z^4", 
+							  "1", 
+							  "x^2", "y^2", "z^2", 
+			                  "xy", "xz", "yz"};
         std::vector<std::string> tmp(args, std::end(args));
         moment_labels = tmp;
 
@@ -148,8 +150,32 @@ void MintGUI::show_base_mesh()
         // std::cout << "T: " << T << std::endl;
 
     polyscope::view::resetCameraToHomeView();
+
+	std::cout << "end show_base_mesh" << std::endl;
     //                 polyscope::state::boundingBox = 
     // std::tuple<glm::vec3, glm::vec3>{ {-1., -1., -1.}, {1., 1., 1.} };
+}
+
+
+void MintGUI::show_exploded_moments(MintFrontend::Moments_To_Show moment_view_mode)
+{
+	std::cout << "show_exploded_moments" << std::endl;
+
+	if (moment_view_mode == MintFrontend::fourth)
+	{
+		show_moments_4th();
+	}
+	if (moment_view_mode == MintFrontend::second)
+	{
+		show_moments_2nd();
+	}
+	if (moment_view_mode == MintFrontend::both)
+	{
+		show_moments_4th();
+		show_moments_2nd();
+	}
+	std::cout << "end show_exploded_moments" << std::endl;
+
 }
 
 
@@ -221,12 +247,13 @@ void MintGUI::show_moments_2nd()
 	polyscope::options::automaticallyComputeSceneExtents = true;
 	// polyscope::state::lengthScale = polyscope::state::lengthScale * 1/5.;
 
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < 6; i++)
 	{
-		for (int j = 0; j < 5; j++)
-		{
-			int cur_id = i * 5 + j;
-			glm::vec3 shift(-j * exploded_spacing, -i * exploded_spacing, 0);
+
+			int cur_id = i + 16;
+
+			double ang = i / 6. * 2. * 3.141562;
+			glm::vec3 shift( (2 + std::cos(ang) ) * exploded_spacing, std::sin(ang) * exploded_spacing, 0);
 
 			if (showInteriorTets)
 			{
@@ -259,7 +286,7 @@ void MintGUI::show_moments_2nd()
 
 
 			// std::cout << "tet_mesh_" + std::to_string(1000 + cur_id) + " " <<  glm::to_string(cur_mesh->getTransform()) << std::endl;
-		}
+		
 	}
 	// polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7);
 	// polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7);
@@ -291,6 +318,9 @@ void MintGUI::clear_polyscope_state()
 		polyscope::removeStructure(std::to_string(10000 + cur_id) + "____" + moment_labels.at(cur_id), false);
 		polyscope::removeStructure(std::to_string(20000 + cur_id) + "____" + moment_labels.at(cur_id), false);
 	}
+
+	std::cout << "end_base_mesh" << std::endl;
+
 
 }
 
@@ -627,7 +657,7 @@ void MintGUI::gui_callback()
                     strncpy(path_constraints, folder_contents.at(i).c_str(), 512);
                     CubeCover::readMoments(path_constraints, M_curr, true);
                     // std::cout << path_constraints << std::endl;
-                    show_constraint_vals();
+					show_exploded_moments(moment_view_mode);
 
                 }
 
@@ -645,7 +675,7 @@ void MintGUI::gui_callback()
                 char* tmp_path_constraints = fileSelectSubroutine();
                 path_constraints = new char[512];
                 strncpy(path_constraints, tmp_path_constraints, 512);
-                show_constraint_vals();
+				show_exploded_moments(moment_view_mode);
 
                 sel_idx = -1;
 
