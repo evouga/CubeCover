@@ -33,6 +33,7 @@ namespace MintFrontend
     enum Mint_Moment_Metric{ four, sec, four_plus_two, four_plus_two_tensor_two };
 
     enum Moments_To_Show{ second, fourth, both };
+    enum Frames_To_Show{ frames, split_frames, split_moments, split_difference };
 
 
 
@@ -56,7 +57,7 @@ namespace MintFrontend
         void show_moments_all();
 
         void show_mesh();
-        void show_frames();
+        void show_frame_field(Frames_To_Show frame_field_view_mode);
         void show_integrated_quantities();
 
         void integrate_frame_field();
@@ -79,7 +80,9 @@ namespace MintFrontend
         
 
         void gui_callback();
-        void gui_file_explorer_callback();
+        void gui_main_control_panel_callback();
+        void gui_file_explorer_callback();   ///// reload mesh automatically.  Whole folder should use same mesh to save space
+        void gui_folder_explorer_callback();
         void gui_run_mint_callback();
         void gui_file_select_BROKEN();
 
@@ -120,6 +123,7 @@ namespace MintFrontend
         Mint_Moment_Metric metric_mode;
 
 		Moments_To_Show moment_view_mode;
+        Frames_To_Show frame_field_view_mode;
         bool showBoundary;
         bool showInteriorTets; 
         bool useSameColorRangeForAllMoments; 
@@ -132,7 +136,8 @@ namespace MintFrontend
         std::vector<std::string>  adj_folder_names; 
         std::vector<std::string>  mesh_names; // TODO
 
-        float exploded_spacing;
+        float exploded_spacing_inp;  // fix this make user param 
+        float exploded_spacing_intern;  // fix this make user param 
 
         float color_range_min;
         float color_range_max;

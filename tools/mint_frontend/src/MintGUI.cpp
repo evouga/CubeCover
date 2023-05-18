@@ -57,6 +57,7 @@ static void HelpMarker(const char* desc)
 
         mesh = CubeCover::TetMeshConnectivity();
 		moment_view_mode = Moments_To_Show::fourth;
+        frame_field_view_mode = Frames_To_Show::frames;
 
         showBoundary = false;
         showInteriorTets = true;
@@ -76,7 +77,9 @@ static void HelpMarker(const char* desc)
 
         // exploded_spacing = 120.; // square
 
-        exploded_spacing = 1.;
+        exploded_spacing_inp = 1.;
+        exploded_spacing_intern = 1.;
+
         color_range_min = 0.;
         color_range_max = 1.;
 
@@ -94,6 +97,9 @@ static void HelpMarker(const char* desc)
 
         
 	}
+
+
+// TODO this is kinda buggy on linux and could work better...
 
 char * fileSelectSubroutine()
 {
@@ -193,6 +199,37 @@ void MintGUI::show_exploded_moments(MintFrontend::Moments_To_Show moment_view_mo
 
 }
 
+
+void MintGUI::show_frame_field(MintFrontend::Frames_To_Show frame_field_view_mode)
+{
+    std::cout << "show_exploded_frame_field" << std::endl;
+
+    if (M_curr.cols() != 22)
+    {
+        show_moments_all();
+    }
+    else
+    {
+	if (frame_field_view_mode == MintFrontend::fourth)
+	{
+		show_moments_4th();
+	}
+	if (frame_field_view_mode == MintFrontend::second)
+	{
+		show_moments_2nd();
+	}
+	if (frame_field_view_mode == MintFrontend::both)
+	{
+		show_moments_4th();
+		show_moments_2nd();
+	}
+    }
+
+
+
+	std::cout << "end show_exploded_frame_field" << std::endl;
+}
+
 void MintGUI::rescale_structure(polyscope::Structure* m)
 {
     m->resetTransform();
@@ -202,7 +239,7 @@ void MintGUI::rescale_structure(polyscope::Structure* m)
     double scale_fac = std::max(bbox_diff.x, bbox_diff.y);
 
     // std::cout << "scale fac " << scale_fac << std::endl;
-    exploded_spacing = scale_fac;
+    exploded_spacing_intern = scale_fac;
     double currScale = scale_fac;
     float s = static_cast<float>(1.0 / scale_fac);
     glm::mat4x4 newTrans = glm::scale(glm::mat4x4(1.0), glm::vec3{s, s, s});
@@ -241,6 +278,7 @@ void MintGUI::show_moments_all()
 
             std::cout << glm::to_string(std::get<0>(polyscope::state::boundingBox) ) << " bounding box " << glm::to_string(std::get<1>(polyscope::state::boundingBox) ) << " bounding box " << polyscope::state::lengthScale << " length scale " << std::endl;
 
+            float exploded_spacing = exploded_spacing_intern * exploded_spacing_inp;
             glm::vec3 shift(-j * exploded_spacing, -i * exploded_spacing, 0);
 
             if (showInteriorTets)
@@ -317,6 +355,8 @@ void MintGUI::show_moments_4th()
         for( int j = 0; j < 5; j++)
         {
             int cur_id = i*5 + j;
+
+            float exploded_spacing = exploded_spacing_intern * exploded_spacing_inp;
             glm::vec3 shift(-j * exploded_spacing, -i * exploded_spacing, 0);
 
             if (showInteriorTets)
@@ -381,6 +421,7 @@ void MintGUI::show_moments_2nd()
 
     polyscope::options::automaticallyComputeSceneExtents = false;
 
+    float exploded_spacing = exploded_spacing_intern * exploded_spacing_inp;
     polyscope::state::boundingBox = std::tuple<glm::vec3, glm::vec3>{glm::vec3{1,-2, -1.}*exploded_spacing, glm::vec3{3,1, 1.}*exploded_spacing};
     polyscope::state::lengthScale = 1.2;
 
@@ -461,7 +502,7 @@ void MintGUI::clear_polyscope_state()
     polyscope::removeStructure("tet_mesh", false);
     polyscope::removeStructure("surf_mesh", false);
 
-	for (int cur_id = 0; cur_id < 21; cur_id++)
+	for (int cur_id = 0; cur_id < 22; cur_id++)
 	{
 		polyscope::removeStructure(std::to_string(10000 + cur_id) + "____" + moment_labels.at(cur_id), false);
 		polyscope::removeStructure(std::to_string(20000 + cur_id) + "____" + moment_labels.at(cur_id), false);
@@ -641,6 +682,27 @@ void MintGUI::gui_file_explorer_callback()
     if (ImGui::TreeNode("Contents of chosen dir"))
     {
              
+        if (ImGui::TreeNode("Show Frames and Curls"))
+        {
+             
+            for (int i = 0; i < file_names_fra.size(); i++)
+            {
+                if (ImGui::Selectable(file_names_fra.at(i).c_str(), sel_idx_fra == i))
+                {
+                    sel_idx_fra = i;
+                    path_constraints = new char[512];
+                    strncpy(path_constraints, folder_contents_fra.at(i).c_str(), 512);
+                    CubeCover::readMoments(path_constraints, M_curr, true);
+                    // std::cout << path_constraints << std::endl;
+					show_exploded_moments(moment_view_mode);
+
+                }
+
+            }
+            ImGui::TreePop();
+        }
+
+
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
 
         if (ImGui::TreeNode("TODO: Select Mesh from directory"))
@@ -693,25 +755,7 @@ void MintGUI::gui_file_explorer_callback()
             ImGui::TreePop();
         }
 
-        if (ImGui::TreeNode("Show Frames and Curls"))
-        {
-             
-            for (int i = 0; i < file_names_fra.size(); i++)
-            {
-                if (ImGui::Selectable(file_names_fra.at(i).c_str(), sel_idx_fra == i))
-                {
-                    sel_idx_fra = i;
-                    path_constraints = new char[512];
-                    strncpy(path_constraints, folder_contents_fra.at(i).c_str(), 512);
-                    CubeCover::readMoments(path_constraints, M_curr, true);
-                    // std::cout << path_constraints << std::endl;
-					show_exploded_moments(moment_view_mode);
 
-                }
-
-            }
-            ImGui::TreePop();
-        }
         ImGui::TreePop();
 
     }
@@ -996,7 +1040,109 @@ void MintGUI::gui_file_select_BROKEN()
     }
 }
 
+void MintGUI::gui_folder_explorer_callback()
+{
 
+}
+
+
+void MintGUI::gui_main_control_panel_callback()
+{
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+
+    if (ImGui::TreeNode("Exploded GUI options"))
+    {
+        if (ImGui::Checkbox("Use consistent heatmap", &useSameColorRangeForAllMoments)) { show_exploded_moments(moment_view_mode); }ImGui::SameLine();
+        ImGui::PushItemWidth(100);
+        ImGui::SliderFloat("m", &color_range_min, 0.0f, 1.0f, "min = %.3f");
+        ImGui::PopItemWidth();ImGui::SameLine();
+        ImGui::PushItemWidth(100);
+        ImGui::SliderFloat("M", &color_range_max, 0.0f, 1.0f, "max = %.3f");
+        ImGui::PopItemWidth();
+ 
+ 
+
+        ImGui::PushItemWidth(100);
+        
+        ImGui::SliderFloat("Exploded Spacing", &exploded_spacing_inp, 0.0f, 150.0f, "ratio = %.3f");
+        ImGui::PopItemWidth();
+
+        ImGui::Text("Which moments to show");
+        if (ImGui::RadioButton("4th", moment_view_mode == Moments_To_Show::fourth))  
+        { 
+            moment_view_mode = Moments_To_Show::fourth;
+			show_exploded_moments(moment_view_mode);
+
+
+            // polyscope::state::lengthScale = 5.;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("2nd", moment_view_mode == Moments_To_Show::second))  
+		{ 
+			moment_view_mode = Moments_To_Show::second; 
+			show_exploded_moments(moment_view_mode);
+		} ImGui::SameLine();
+        if (ImGui::RadioButton("both", moment_view_mode == Moments_To_Show::both))  
+		{ 
+			moment_view_mode = Moments_To_Show::both; 
+			show_exploded_moments(moment_view_mode);
+		} 
+
+
+        ImGui::Text("Which frames to show");
+        if (ImGui::RadioButton("GL(3)", frame_field_view_mode == Frames_To_Show::frames))  
+        { 
+            frame_field_view_mode = Frames_To_Show::frames;
+			show_frame_field(frame_field_view_mode);
+
+
+            // polyscope::state::lengthScale = 5.;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("split frames", frame_field_view_mode == Frames_To_Show::split_frames))  
+        { 
+            frame_field_view_mode = Frames_To_Show::split_frames;
+			show_frame_field(frame_field_view_mode);
+
+
+            // polyscope::state::lengthScale = 5.;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("split_moments", frame_field_view_mode == Frames_To_Show::split_moments))  
+        { 
+            frame_field_view_mode = Frames_To_Show::split_moments;
+			show_frame_field(frame_field_view_mode);
+
+
+            // polyscope::state::lengthScale = 5.;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("split_difference", frame_field_view_mode == Frames_To_Show::split_difference))  
+        { 
+            frame_field_view_mode = Frames_To_Show::split_difference;
+			show_frame_field(frame_field_view_mode);
+
+
+            // polyscope::state::lengthScale = 5.;
+        } ImGui::SameLine();
+        // if (ImGui::RadioButton("2nd", moment_view_mode == Moments_To_Show::second))  
+		// { 
+		// 	moment_view_mode = Moments_To_Show::second; 
+		// 	show_exploded_moments(moment_view_mode);
+		// } ImGui::SameLine();
+        // if (ImGui::RadioButton("both", moment_view_mode == Moments_To_Show::both))  
+		// { 
+		// 	moment_view_mode = Moments_To_Show::both; 
+		// 	show_exploded_moments(moment_view_mode);
+		// } 
+
+
+
+
+		if (ImGui::Checkbox("show boundary", &showBoundary)) { show_exploded_moments(moment_view_mode); }ImGui::SameLine();
+        if (ImGui::Checkbox("show interior tets", &showInteriorTets)) { show_exploded_moments(moment_view_mode); }
+
+
+        ImGui::TreePop();
+
+    }
+}
 
 
 
@@ -1011,12 +1157,43 @@ void MintGUI::gui_callback()
     ImGui::End();
     ImGui::PopID();
 
+
+    ImGui::PushID("folder_browser");
+    
+    ImGui::SetNextWindowPos(ImVec2(400, 20),ImGuiCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(1000, 0));
+
+    ImGui::Begin("Folder Browser", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
+
+    // ImGui::SetNextWindowPos(ImVec2((400 ), 50), ImGuiCond_Once);
+    // ImGui::SetNextWindowSize(ImVec2(1000, 0.));
+    // ImGuiWindowFlags_NoMove
+
+    //     // Main body of the Demo window starts here.
+    // if (!ImGui::Begin("File Browser", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    // {
+    //     // Early out if the window is collapsed, as an optimization.
+    //     ImGui::End();
+    //     return;
+    // }
+    gui_file_select_BROKEN();
+  gui_folder_explorer_callback();
+
+
+
+    ImGui::End();
+    ImGui::PopID();
+
+
+
+
+
     ImGui::PushID("file_browser");
     
     ImGui::SetNextWindowPos(ImVec2(polyscope::view::windowWidth -(600 ), 600),ImGuiCond_Once);
-    ImGui::SetNextWindowSize(ImVec2(1000, 500.));
+    ImGui::SetNextWindowSize(ImVec2(1000, polyscope::view::windowHeight/2));
 
-    ImGui::Begin("File Browser", nullptr, ImGuiWindowFlags_NoSavedSettings);
+    ImGui::Begin("File Browser", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
 
     // ImGui::SetNextWindowPos(ImVec2((400 ), 50), ImGuiCond_Once);
     // ImGui::SetNextWindowSize(ImVec2(1000, 0.));
@@ -1041,7 +1218,7 @@ void MintGUI::gui_callback()
 
     ImGui::PushID("mint_user_callback");
     
-    ImGui::SetNextWindowPos(ImVec2(polyscope::view::windowWidth - (600 ), 200), ImGuiCond_Once);
+    ImGui::SetNextWindowPos(ImVec2(polyscope::view::windowWidth - (500 ), 200), ImGuiCond_Once);
     ImGui::SetNextWindowSize(ImVec2(500, 0.));
 
         // Main body of the Demo window starts here.
@@ -1056,7 +1233,7 @@ void MintGUI::gui_callback()
 
 
 
-gui_file_select_BROKEN();
+
   
    
 
@@ -1064,56 +1241,35 @@ gui_file_select_BROKEN();
 
     
   
-    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
-
-    if (ImGui::TreeNode("Exploded GUI options"))
-    {
-        if (ImGui::Checkbox("Use consistent heatmap", &useSameColorRangeForAllMoments)) { show_exploded_moments(moment_view_mode); }ImGui::SameLine();
-        ImGui::PushItemWidth(100);
-        ImGui::SliderFloat("m", &color_range_min, 0.0f, 1.0f, "min = %.3f");
-        ImGui::PopItemWidth();ImGui::SameLine();
-        ImGui::PushItemWidth(100);
-        ImGui::SliderFloat("M", &color_range_max, 0.0f, 1.0f, "max = %.3f");
-        ImGui::PopItemWidth();
- 
- 
-
-        ImGui::PushItemWidth(100);
-        ImGui::SliderFloat("Exploded Spacing", &exploded_spacing, 0.0f, 150.0f, "ratio = %.3f");
-        ImGui::PopItemWidth();
-
-        ImGui::Text("Which moments to show");
-        if (ImGui::RadioButton("4th", moment_view_mode == Moments_To_Show::fourth))  
-        { 
-            moment_view_mode = Moments_To_Show::fourth;
-			show_exploded_moments(moment_view_mode);
-
-
-            // polyscope::state::lengthScale = 5.;
-        } ImGui::SameLine();
-        if (ImGui::RadioButton("2nd", moment_view_mode == Moments_To_Show::second))  
-		{ 
-			moment_view_mode = Moments_To_Show::second; 
-			show_exploded_moments(moment_view_mode);
-		} ImGui::SameLine();
-        if (ImGui::RadioButton("both", moment_view_mode == Moments_To_Show::both))  
-		{ 
-			moment_view_mode = Moments_To_Show::both; 
-			show_exploded_moments(moment_view_mode);
-		} 
-
-
-
-		if (ImGui::Checkbox("show boundary", &showBoundary)) { show_exploded_moments(moment_view_mode); }ImGui::SameLine();
-        if (ImGui::Checkbox("show interior tets", &showInteriorTets)) { show_exploded_moments(moment_view_mode); }
-
-
-        ImGui::TreePop();
-
-    }
+gui_main_control_panel_callback();
 
 
 gui_run_mint_callback();
+
+
+
+	// ImGui::PopItemWidth();
+
+    auto winsizehack = ImGui::GetWindowSize();
+
+
+    ImGui::End();
+    ImGui::PopID();
+
+    ImGui::ShowDemoWindow(); 
+
+    ImGui::SetWindowSize( winsizehack ); 
+}
+
+}
+
+
+
+
+
+
+
+
 
 /*
 
@@ -1148,28 +1304,3 @@ gui_run_mint_callback();
 	}
     */
 
-
-
- 
-
-
-
-
-
-
-
-
-	// ImGui::PopItemWidth();
-
-    auto winsizehack = ImGui::GetWindowSize();
-
-
-    ImGui::End();
-    ImGui::PopID();
-
-    ImGui::ShowDemoWindow(); 
-
-    ImGui::SetWindowSize( winsizehack ); 
-}
-
-}
