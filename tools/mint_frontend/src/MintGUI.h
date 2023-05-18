@@ -3,6 +3,7 @@
 
 #include <Eigen/Core>
 #include "TetMeshConnectivity.h"
+#include "FrameField.h"
 #include "polyscope/polyscope.h"
 
 namespace MintFrontend
@@ -58,6 +59,8 @@ namespace MintFrontend
 
         void show_mesh();
         void show_frame_field(Frames_To_Show frame_field_view_mode);
+        
+        void show_gl3_frame_field();
         void show_integrated_quantities();
 
         void integrate_frame_field();
@@ -77,6 +80,7 @@ namespace MintFrontend
         void set_comment();
 
         char* file_select_subroutine();
+        void set_frame_field();
         
 
         void gui_callback();
@@ -93,6 +97,7 @@ namespace MintFrontend
         FileParts fileparts(const std::string &fullpath);
 
         char* path_mesh;
+        char* path_fra; 
         char* path_outdir;
 
 
@@ -115,7 +120,28 @@ namespace MintFrontend
         Eigen::MatrixXi T;
         Eigen::MatrixXi F;
         Eigen::MatrixXi bdryF;
+
+
+
+        // Moments 
         Eigen::MatrixXd M_curr;
+
+        // Field 
+        CubeCover::FrameField* field;
+
+        // Field viz 
+        Eigen::MatrixXd centroids;
+        std::vector<Eigen::MatrixXd> framefieldvecs;
+
+
+        // Curve network viz stuff 
+        Eigen::MatrixXd Pblack;
+        Eigen::MatrixXi Eblack;
+        Eigen::MatrixXd Pblue;
+        Eigen::MatrixXi Eblue;
+        Eigen::MatrixXd Pgreen;
+        Eigen::MatrixXi Egreen;
+
 
         Mint_Linear_Solver cur_solver;
         Mint_Integrability_Mode mint_mode;
@@ -133,6 +159,7 @@ namespace MintFrontend
         std::vector<std::string>  folder_contents_fra; 
         std::vector<std::string>  file_names; 
         std::vector<std::string>  file_names_fra; 
+        std::vector<std::string>  file_names_mesh; 
         std::vector<std::string>  adj_folder_names; 
         std::vector<std::string>  mesh_names; // TODO
 
@@ -141,6 +168,8 @@ namespace MintFrontend
 
         float color_range_min;
         float color_range_max;
+        float transparancy_interior; // TODO wire this up.
+        float transparancy_boundary; 
 
 
      
