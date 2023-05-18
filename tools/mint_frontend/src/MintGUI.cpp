@@ -60,6 +60,7 @@ static void HelpMarker(const char* desc)
 
         showBoundary = false;
         showInteriorTets = true;
+        useSameColorRangeForAllMoments = false;
 
 
         const char *args[] = {"x^4", "x^3 y", "x^3 z", "x^2 y^2", "x^2 y z", 
@@ -75,14 +76,18 @@ static void HelpMarker(const char* desc)
 
         // exploded_spacing = 120.; // square
 
-        exploded_spacing = 22.;
+        exploded_spacing = 1.;
+        color_range_min = 0.;
+        color_range_max = 1.;
 
-        sel_idx = -1;
+        sel_idx_mom = -1;
+        sel_idx_fra = -1;
 
         cur_solver = Mint_Linear_Solver::exact;
         mint_mode = Mint_Integrability_Mode::free;
         shell_mode = Mint_Frame_Projection::offshell;
         metric_mode = Mint_Moment_Metric::four;
+
 
 
         // Load config file here. 
@@ -161,6 +166,12 @@ void MintGUI::show_exploded_moments(MintFrontend::Moments_To_Show moment_view_mo
 {
 	std::cout << "show_exploded_moments" << std::endl;
 
+    if (M_curr.cols() != 22)
+    {
+        show_moments_all();
+    }
+    else
+    {
 	if (moment_view_mode == MintFrontend::fourth)
 	{
 		show_moments_4th();
@@ -174,10 +185,117 @@ void MintGUI::show_exploded_moments(MintFrontend::Moments_To_Show moment_view_mo
 		show_moments_4th();
 		show_moments_2nd();
 	}
+    }
+
+
+
 	std::cout << "end show_exploded_moments" << std::endl;
 
 }
 
+void MintGUI::rescale_structure(polyscope::Structure* m)
+{
+    m->resetTransform();
+    // m->centerBoundingBox();
+    std::tuple<glm::vec3, glm::vec3> bbox = m->boundingBox();
+    glm::vec3 bbox_diff = std::get<1>(bbox) - std::get<0>(bbox);
+    double scale_fac = std::max(bbox_diff.x, bbox_diff.y);
+
+    // std::cout << "scale fac " << scale_fac << std::endl;
+    exploded_spacing = scale_fac;
+    double currScale = scale_fac;
+    float s = static_cast<float>(1.0 / scale_fac);
+    glm::mat4x4 newTrans = glm::scale(glm::mat4x4(1.0), glm::vec3{s, s, s});
+    m->setTransform(newTrans * m->getTransform());
+    m->centerBoundingBox();
+
+}
+
+
+///// HACKY :( 
+void MintGUI::show_moments_all()
+{
+
+    std::cout << "show_constraint_vals" << std::endl;
+    clear_polyscope_state();
+    // polyscope::options::automaticallyComputeSceneExtents = true;
+    // polyscope::state::lengthScale = polyscope::state::lengthScale * 1/5.;
+
+    polyscope::options::automaticallyComputeSceneExtents = false;
+
+    polyscope::state::boundingBox = std::tuple<glm::vec3, glm::vec3>{glm::vec3{-10,-5, -1.}, glm::vec3{6,2, 1.}};
+    polyscope::state::lengthScale = 1.2;
+
+
+    std::pair<double,double> colrng = std::pair<double,double>(color_range_min,color_range_max);
+
+    int tot_cols = M_curr.cols();
+
+    for( int i = 0; i < 3; i++)
+    {
+        for( int j = 0; j < 5; j++)
+        {
+            int cur_id = i*5 + j;
+            if (cur_id >= tot_cols)
+                break;
+
+            std::cout << glm::to_string(std::get<0>(polyscope::state::boundingBox) ) << " bounding box " << glm::to_string(std::get<1>(polyscope::state::boundingBox) ) << " bounding box " << polyscope::state::lengthScale << " length scale " << std::endl;
+
+            glm::vec3 shift(-j * exploded_spacing, -i * exploded_spacing, 0);
+
+            if (showInteriorTets)
+            {
+                // auto cur_mesh = polyscope::registerTetMesh(moment_labels.at(cur_id) + "_tm_" + std::to_string(1000000 + cur_id), V, T);
+                auto cur_mesh = polyscope::registerTetMesh(std::to_string(10000 + cur_id) + "____" +moment_labels.at(cur_id), V, T);
+
+
+                cur_mesh->setEdgeWidth(0.5)->setTransparency(.7);
+                rescale_structure(cur_mesh);
+ 
+
+                cur_mesh->translate(shift);
+                Eigen::VectorXd tmp_mvals = M_curr.block(0,cur_id,mesh.nTets(),cur_id+1);
+                cur_mesh->addCellScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
+                if (useSameColorRangeForAllMoments)
+                {
+                    cur_mesh->addCellScalarQuantity("cur-moment", tmp_mvals)->setMapRange(colrng)->setEnabled(true);
+                }
+            }
+
+            if (showBoundary)
+            {
+                // auto surf_mesh = polyscope::registerSurfaceMesh(moment_labels.at(cur_id) + "_sm_" + std::to_string(1000000 + cur_id), V, bdryF);
+                auto surf_mesh = polyscope::registerSurfaceMesh(std::to_string(20000 + cur_id) + "____" + moment_labels.at(cur_id), V, bdryF);
+
+
+
+                surf_mesh->setEdgeWidth(1)->setTransparency(.9);
+                rescale_structure(surf_mesh);
+                surf_mesh->translate(shift);
+
+                // std::cout << M_curr.rows()-mesh.nTets() << " diff " << M_curr.rows()-mesh.nTets() - bdryF.rows() << std::endl;
+                Eigen::VectorXd tmp_mvals = M_curr.block(mesh.nTets(),cur_id,bdryF.rows(),cur_id+1);
+                surf_mesh->addFaceScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
+                if (useSameColorRangeForAllMoments)
+                {
+                    surf_mesh->addFaceScalarQuantity("cur-moment", tmp_mvals)->setMapRange(colrng)->setEnabled(true);
+                }
+            }
+
+
+            // std::cout << "tet_mesh_" + std::to_string(1000 + cur_id) + " " <<  glm::to_string(cur_mesh->getTransform()) << std::endl;
+        }
+    }
+    // polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7);
+    // polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7);
+    polyscope::options::automaticallyComputeSceneExtents = false;
+    polyscope::state::lengthScale = polyscope::state::lengthScale * 3.;
+
+    polyscope::view::resetCameraToHomeView();
+
+
+
+}
 
 
 void MintGUI::show_moments_4th()
@@ -185,8 +303,14 @@ void MintGUI::show_moments_4th()
 
     std::cout << "show_constraint_vals" << std::endl;
     clear_polyscope_state();
-    polyscope::options::automaticallyComputeSceneExtents = true;
+    polyscope::options::automaticallyComputeSceneExtents = false;
     // polyscope::state::lengthScale = polyscope::state::lengthScale * 1/5.;
+
+    polyscope::state::boundingBox = std::tuple<glm::vec3, glm::vec3>{glm::vec3{-10,-5, -1.}, glm::vec3{6,2, 1.}};
+    polyscope::state::lengthScale = 1.4;
+
+
+    std::pair<double,double> colrng = std::pair<double,double>(color_range_min,color_range_max);
 
     for( int i = 0; i < 3; i++)
     {
@@ -201,11 +325,15 @@ void MintGUI::show_moments_4th()
                 auto cur_mesh = polyscope::registerTetMesh(std::to_string(10000 + cur_id) + "____" +moment_labels.at(cur_id), V, T);
 
 
-                cur_mesh->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
-                cur_mesh->resetTransform();
+                cur_mesh->setEdgeWidth(0.5)->setTransparency(.7);
+                rescale_structure(cur_mesh);
                 cur_mesh->translate(shift);
                 Eigen::VectorXd tmp_mvals = M_curr.block(0,cur_id,mesh.nTets(),cur_id+1);
                 cur_mesh->addCellScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
+                if (useSameColorRangeForAllMoments)
+                {
+                    cur_mesh->addCellScalarQuantity("cur-moment", tmp_mvals)->setMapRange(colrng)->setEnabled(true);
+                }
             }
 
             if (showBoundary)
@@ -215,13 +343,17 @@ void MintGUI::show_moments_4th()
 
 
 
-                surf_mesh->setEdgeWidth(1)->setTransparency(.9)->rescaleToUnit();
-                surf_mesh->resetTransform();
+                surf_mesh->setEdgeWidth(1)->setTransparency(.9);
+                rescale_structure(surf_mesh);
                 surf_mesh->translate(shift);
 
                 // std::cout << M_curr.rows()-mesh.nTets() << " diff " << M_curr.rows()-mesh.nTets() - bdryF.rows() << std::endl;
                 Eigen::VectorXd tmp_mvals = M_curr.block(mesh.nTets(),cur_id,bdryF.rows(),cur_id+1);
                 surf_mesh->addFaceScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
+                if (useSameColorRangeForAllMoments)
+                {
+                    surf_mesh->addFaceScalarQuantity("cur-moment", tmp_mvals)->setMapRange(colrng)->setEnabled(true);
+                }
             }
 
 
@@ -244,8 +376,15 @@ void MintGUI::show_moments_2nd()
 
 	std::cout << "show_constraint_vals" << std::endl;
 	clear_polyscope_state();
-	polyscope::options::automaticallyComputeSceneExtents = true;
-	// polyscope::state::lengthScale = polyscope::state::lengthScale * 1/5.;
+	// polyscope::options::automaticallyComputeSceneExtents = true;
+	// // polyscope::state::lengthScale = polyscope::state::lengthScale * 1/5.;
+
+    polyscope::options::automaticallyComputeSceneExtents = false;
+
+    polyscope::state::boundingBox = std::tuple<glm::vec3, glm::vec3>{glm::vec3{1,-2, -1.}*exploded_spacing, glm::vec3{3,1, 1.}*exploded_spacing};
+    polyscope::state::lengthScale = 1.2;
+
+    std::pair<double,double> colrng = std::pair<double,double>(color_range_min,color_range_max);
 
 	for (int i = 0; i < 6; i++)
 	{
@@ -261,11 +400,16 @@ void MintGUI::show_moments_2nd()
 				auto cur_mesh = polyscope::registerTetMesh(std::to_string(10000 + cur_id) + "____" + moment_labels.at(cur_id), V, T);
 
 
-				cur_mesh->setEdgeWidth(0.5)->setTransparency(.7)->rescaleToUnit();
-				cur_mesh->resetTransform();
+				cur_mesh->setEdgeWidth(0.5)->setTransparency(.7);
+				rescale_structure(cur_mesh);
 				cur_mesh->translate(shift);
 				Eigen::VectorXd tmp_mvals = M_curr.block(0, cur_id, mesh.nTets(), cur_id + 1);
-				cur_mesh->addCellScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
+                cur_mesh->addCellScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
+                if (useSameColorRangeForAllMoments)
+                {
+                    cur_mesh->addCellScalarQuantity("cur-moment", tmp_mvals)->setMapRange(colrng)->setEnabled(true);
+                }
+				
 			}
 
 			if (showBoundary)
@@ -275,13 +419,17 @@ void MintGUI::show_moments_2nd()
 
 
 
-				surf_mesh->setEdgeWidth(1)->setTransparency(.9)->rescaleToUnit();
-				surf_mesh->resetTransform();
+				surf_mesh->setEdgeWidth(1)->setTransparency(.9);
+				rescale_structure(surf_mesh);
 				surf_mesh->translate(shift);
 
 				// std::cout << M_curr.rows()-mesh.nTets() << " diff " << M_curr.rows()-mesh.nTets() - bdryF.rows() << std::endl;
 				Eigen::VectorXd tmp_mvals = M_curr.block(mesh.nTets(), cur_id, bdryF.rows(), cur_id + 1);
 				surf_mesh->addFaceScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
+                if (useSameColorRangeForAllMoments)
+                {
+                    surf_mesh->addFaceScalarQuantity("cur-moment", tmp_mvals)->setMapRange(colrng)->setEnabled(true);
+                }
 			}
 
 
@@ -339,7 +487,6 @@ void MintGUI::set_base_mesh()
         polyscope::warning("Unable to load selected mesh");
         mesh = CubeCover::TetMeshConnectivity();
     }
-
     else{
         mesh = CubeCover::TetMeshConnectivity(T);
         // make boundary mesh out of volume mesh
@@ -397,7 +544,9 @@ void MintGUI::set_base_mesh()
 void MintGUI::load_state_from_output_dir()
 {
     folder_contents.clear();
+    folder_contents_fra.clear();
     file_names.clear();
+    file_names_fra.clear();
     adj_folder_names.clear();
 
     const int size = strlen(path_outdir);
@@ -449,6 +598,11 @@ void MintGUI::load_state_from_output_dir()
             file_names.push_back( fp.name );
         }
 
+        if (fp.ext == ".fra"){
+            folder_contents_fra.push_back( entry.path().u8string());
+            file_names_fra.push_back( fp.name );
+        }
+
         if (fp.ext == ".mesh")
         {
             const char* tmp_path_mesh = tmp.c_str();
@@ -459,10 +613,13 @@ void MintGUI::load_state_from_output_dir()
             // folder_contents.push_back( entry.path() );
     }
 
-    sel_idx = -1;
+    sel_idx_mom = -1;
+    sel_idx_fra = -1;
 
     std::sort(folder_contents.begin(), folder_contents.end());
+    std::sort(folder_contents_fra.begin(), folder_contents_fra.end());
     std::sort(file_names.begin(), file_names.end());
+    std::sort(file_names_fra.begin(), file_names_fra.end());
 
     // for (int i = 0; i < folder_contents.size(); i++)
     // {
@@ -477,10 +634,220 @@ void MintGUI::load_state_from_output_dir()
 
 
 
-
-void MintGUI::gui_callback()
+void MintGUI::gui_file_explorer_callback()
 {
-    	ImGui::PushItemWidth(1000); // Make ui elements 100 pixels wide,
+     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+
+    if (ImGui::TreeNode("Contents of chosen dir"))
+    {
+             
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+
+        if (ImGui::TreeNode("TODO: Select Mesh from directory"))
+        {
+
+            ImGui::TreePop();
+        }
+        
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+
+        if (ImGui::TreeNode("Select Moments to Visualize"))
+        {
+             
+
+            for (int i = 0; i < file_names.size(); i++)
+            {
+                if (ImGui::Selectable(file_names.at(i).c_str(), sel_idx_mom == i))
+                {
+                    sel_idx_mom = i;
+                    path_constraints = new char[512];
+                    strncpy(path_constraints, folder_contents.at(i).c_str(), 512);
+                    CubeCover::readMoments(path_constraints, M_curr, true);
+                    // std::cout << path_constraints << std::endl;
+					show_exploded_moments(moment_view_mode);
+
+                }
+
+            }
+
+
+
+
+            ImGui::PushItemWidth(300);
+            ImGui::InputTextWithHint("3", "path to exploded moments", path_constraints, 512);
+            ImGui::PopItemWidth();
+            ImGui::SameLine();
+            HelpMarker("Choose moments to visualize in a different directory");
+            ImGui::SameLine();
+
+            if (ImGui::Button("Pick .mom")) {
+                char* tmp_path_constraints = fileSelectSubroutine();
+                path_constraints = new char[512];
+                strncpy(path_constraints, tmp_path_constraints, 512);
+				show_exploded_moments(moment_view_mode);
+
+                sel_idx_mom = -1;
+
+            }
+
+            ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNode("Show Frames and Curls"))
+        {
+             
+            for (int i = 0; i < file_names_fra.size(); i++)
+            {
+                if (ImGui::Selectable(file_names_fra.at(i).c_str(), sel_idx_fra == i))
+                {
+                    sel_idx_fra = i;
+                    path_constraints = new char[512];
+                    strncpy(path_constraints, folder_contents_fra.at(i).c_str(), 512);
+                    CubeCover::readMoments(path_constraints, M_curr, true);
+                    // std::cout << path_constraints << std::endl;
+					show_exploded_moments(moment_view_mode);
+
+                }
+
+            }
+            ImGui::TreePop();
+        }
+        ImGui::TreePop();
+
+    }
+
+
+
+    ///////////////////////////////////////////////////////////////////////////
+}
+
+
+void MintGUI::gui_run_mint_callback()
+{
+    if (ImGui::Button("Run Mint")) {
+    // executes when button is pressed
+    // directory_path = fileSelectSubroutine();
+        polyscope::warning("NOT IMPLEMENTED");
+    }
+
+    ImGui::SameLine();
+    HelpMarker("TODO: start mint call in seperate thread");
+    ImGui::SameLine();
+
+
+
+
+    if (ImGui::TreeNode("Exploded Solver options"))
+    {
+        ImGui::Text("Integrability Mode");
+        if (ImGui::RadioButton("Free", mint_mode == Mint_Integrability_Mode::free))  
+        { 
+            mint_mode = Mint_Integrability_Mode::free;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("Mint (the main attraction!)", mint_mode == Mint_Integrability_Mode::mint))  
+        { 
+            mint_mode = Mint_Integrability_Mode::mint;
+        } 
+
+
+        ImGui::Text("Shell (local projection) Switch");
+        if (ImGui::RadioButton("Off-Shell", shell_mode == Mint_Frame_Projection::offshell))  
+        { 
+            shell_mode = Mint_Frame_Projection::offshell;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("On-Shell", shell_mode == Mint_Frame_Projection::onshell))  
+        { 
+            shell_mode = Mint_Frame_Projection::onshell;
+        } 
+
+
+        ImGui::Text("Delta Metric");
+        if (ImGui::RadioButton("Fourth Moments", metric_mode == Mint_Moment_Metric::four))  
+        { 
+            metric_mode = Mint_Moment_Metric::four;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("Second Moments", metric_mode == Mint_Moment_Metric::sec))  
+        { 
+            metric_mode = Mint_Moment_Metric::sec;
+        } 
+        if (ImGui::RadioButton("Scale Invariant: 4 + 2 \\oplus 2", metric_mode == Mint_Moment_Metric::four_plus_two_tensor_two))  
+        { 
+            metric_mode = Mint_Moment_Metric::four_plus_two_tensor_two;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("Scale Dependent: 4 + 2", metric_mode == Mint_Moment_Metric::four_plus_two))  
+        { 
+            metric_mode = Mint_Moment_Metric::four_plus_two;
+        } 
+
+
+        ImGui::Text(" \\ solver good, gmres for big models ");
+    if (ImGui::RadioButton("Exact", cur_solver == Mint_Linear_Solver::exact))  { cur_solver = Mint_Linear_Solver::exact; } ImGui::SameLine();
+    if (ImGui::RadioButton("GMRes", cur_solver == Mint_Linear_Solver::gmres))  { cur_solver = Mint_Linear_Solver::gmres; } 
+    
+
+	if (ImGui::Button("(re)Load Boundary")) {
+
+		polyscope::warning("The chosen .bound file does not match the loaded mesh.");
+		// executes when button is pressed
+		// directory_path = fileSelectSubroutine();
+		show_exploded_moments(moment_view_mode);
+	}
+
+	ImGui::SameLine();
+
+	ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+
+
+	if (ImGui::TreeNode("Exploded Boundary Select options"))
+	{
+
+		// ImGui::Text("Start penzil.app to annotate model");
+
+		// ImGui::Text("Load From File");
+
+		if (ImGui::Button("Start penzil.app to annotate model")) {
+
+	//		show_exploded_moments(moment_view_mode);
+
+		}
+		if (ImGui::Button("Load From File")) {
+
+	//		show_exploded_moments(moment_view_mode);
+		}
+
+        if (ImGui::Button("Project Bound to closest GL(3) field")) {
+    // executes when button is pressed
+    // directory_path = fileSelectSubroutine();
+    
+        }
+
+
+
+
+		ImGui::TreePop();
+
+	}
+
+
+
+
+	if (ImGui::Button("Compute and Load normal boundary")) {
+
+		show_exploded_moments(moment_view_mode);
+
+	}
+
+
+        ImGui::TreePop();
+
+    }
+
+}
+
+void MintGUI::gui_file_select_BROKEN()
+{
+    //    int rightWindowsWidth = 1000;
+    	// ImGui::PushItemWidth(1000); // Make ui elements 100 pixels wide,
 							   // instead of full width. Must have 
 							   // matching PopItemWidth() below.
 
@@ -627,69 +994,71 @@ void MintGUI::gui_callback()
 
 
     }
+}
 
-  
-    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
 
-    if (ImGui::TreeNode("Contents of chosen dir"))
-    {
-             
-        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
 
-        if (ImGui::TreeNode("TODO: Select Mesh from directory"))
-        {
 
-            ImGui::TreePop();
-        }
+
+void MintGUI::gui_callback()
+{
+    ImGui::PushID("dummy");
+    ImGui::Begin("d", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
         
-        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+  
+    
+    
+    ImGui::End();
+    ImGui::PopID();
 
-        if (ImGui::TreeNode("Select Moments to Visualize"))
-        {
-             
+    ImGui::PushID("file_browser");
+    
+    ImGui::SetNextWindowPos(ImVec2(polyscope::view::windowWidth -(600 ), 600),ImGuiCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(1000, 0.));
 
-            for (int i = 0; i < file_names.size(); i++)
-            {
-                if (ImGui::Selectable(file_names.at(i).c_str(), sel_idx == i))
-                {
-                    sel_idx = i;
-                    path_constraints = new char[512];
-                    strncpy(path_constraints, folder_contents.at(i).c_str(), 512);
-                    CubeCover::readMoments(path_constraints, M_curr, true);
-                    // std::cout << path_constraints << std::endl;
-					show_exploded_moments(moment_view_mode);
+    ImGui::Begin("File Browser", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
 
-                }
+    // ImGui::SetNextWindowPos(ImVec2((400 ), 50), ImGuiCond_Once);
+    // ImGui::SetNextWindowSize(ImVec2(1000, 0.));
+// ImGuiWindowFlags_NoMove
 
-            }
-
-
-            ImGui::PushItemWidth(300);
-            ImGui::InputTextWithHint("3", "path to exploded moments", path_constraints, 512);
-            ImGui::PopItemWidth();
-            ImGui::SameLine();
-            HelpMarker("Choose moments to visualize in a different directory");
-            ImGui::SameLine();
-
-            if (ImGui::Button("Pick .mom")) {
-                char* tmp_path_constraints = fileSelectSubroutine();
-                path_constraints = new char[512];
-                strncpy(path_constraints, tmp_path_constraints, 512);
-				show_exploded_moments(moment_view_mode);
-
-                sel_idx = -1;
-
-            }
-
-            ImGui::TreePop();
-        }
-        ImGui::TreePop();
-
-    }
+    //     // Main body of the Demo window starts here.
+    // if (!ImGui::Begin("File Browser", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    // {
+    //     // Early out if the window is collapsed, as an optimization.
+    //     ImGui::End();
+    //     return;
+    // }
+  gui_file_explorer_callback();
 
 
 
-    ///////////////////////////////////////////////////////////////////////////
+    ImGui::End();
+    ImGui::PopID();
+
+
+
+
+    ImGui::PushID("mint_user_callback");
+    
+    ImGui::SetNextWindowPos(ImVec2(polyscope::view::windowWidth - (600 ), 200), ImGuiCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(500, 0.));
+
+        // Main body of the Demo window starts here.
+    // if (!ImGui::Begin("Mint Control Panel", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    // {
+    //     // Early out if the window is collapsed, as an optimization.
+    //     ImGui::End();
+    //     return;
+    // }
+
+    ImGui::Begin("Mint Control Panel", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
+
+
+
+gui_file_select_BROKEN();
+  
+   
 
 
 
@@ -699,6 +1068,15 @@ void MintGUI::gui_callback()
 
     if (ImGui::TreeNode("Exploded GUI options"))
     {
+        if (ImGui::Checkbox("Use consistent heatmap", &useSameColorRangeForAllMoments)) { show_exploded_moments(moment_view_mode); }ImGui::SameLine();
+        ImGui::PushItemWidth(100);
+        ImGui::SliderFloat("m", &color_range_min, 0.0f, 1.0f, "min = %.3f");
+        ImGui::PopItemWidth();ImGui::SameLine();
+        ImGui::PushItemWidth(100);
+        ImGui::SliderFloat("M", &color_range_max, 0.0f, 1.0f, "max = %.3f");
+        ImGui::PopItemWidth();
+ 
+ 
 
         ImGui::PushItemWidth(100);
         ImGui::SliderFloat("Exploded Spacing", &exploded_spacing, 0.0f, 150.0f, "ratio = %.3f");
@@ -735,13 +1113,7 @@ void MintGUI::gui_callback()
     }
 
 
-    if (ImGui::Button("Project Bound to closest GL(3) field")) {
-    // executes when button is pressed
-    // directory_path = fileSelectSubroutine();
-    
-    }
-
-
+gui_run_mint_callback();
 
 /*
 
@@ -778,152 +1150,26 @@ void MintGUI::gui_callback()
 
 
 
-    if (ImGui::Button("Run Mint")) {
-    // executes when button is pressed
-    // directory_path = fileSelectSubroutine();
-        polyscope::warning("NOT IMPLEMENTED");
-    }
-
-    ImGui::SameLine();
-    HelpMarker("TODO: start mint call in seperate thread");
-    ImGui::SameLine();
-
-
-
-
-    if (ImGui::TreeNode("Exploded Solver options"))
-    {
-
-
-
-        ImGui::Text("Integrability Mode");
-        if (ImGui::RadioButton("Free", mint_mode == Mint_Integrability_Mode::free))  
-        { 
-            mint_mode = Mint_Integrability_Mode::free;
-        } ImGui::SameLine();
-        if (ImGui::RadioButton("Mint (the main attraction!)", mint_mode == Mint_Integrability_Mode::mint))  
-        { 
-            mint_mode = Mint_Integrability_Mode::mint;
-        } 
-
-
-        ImGui::Text("Shell (local projection) Switch");
-        if (ImGui::RadioButton("Off-Shell", shell_mode == Mint_Frame_Projection::offshell))  
-        { 
-            shell_mode = Mint_Frame_Projection::offshell;
-        } ImGui::SameLine();
-        if (ImGui::RadioButton("On-Shell", shell_mode == Mint_Frame_Projection::onshell))  
-        { 
-            shell_mode = Mint_Frame_Projection::onshell;
-        } 
-
-
-        ImGui::Text("Delta Metric");
-        if (ImGui::RadioButton("Fourth Moments", metric_mode == Mint_Moment_Metric::four))  
-        { 
-            metric_mode = Mint_Moment_Metric::four;
-        } ImGui::SameLine();
-        if (ImGui::RadioButton("Second Moments", metric_mode == Mint_Moment_Metric::sec))  
-        { 
-            metric_mode = Mint_Moment_Metric::sec;
-        } 
-        if (ImGui::RadioButton("Scale Invariant: 4 + 2 \\oplus 2", metric_mode == Mint_Moment_Metric::four_plus_two_tensor_two))  
-        { 
-            metric_mode = Mint_Moment_Metric::four_plus_two_tensor_two;
-        } ImGui::SameLine();
-        if (ImGui::RadioButton("Scale Dependent: 4 + 2", metric_mode == Mint_Moment_Metric::four_plus_two))  
-        { 
-            metric_mode = Mint_Moment_Metric::four_plus_two;
-        } 
-
-
-        ImGui::Text(" \\ solver good, gmres for big models ");
-    if (ImGui::RadioButton("Exact", cur_solver == Mint_Linear_Solver::exact))  { cur_solver = Mint_Linear_Solver::exact; } ImGui::SameLine();
-    if (ImGui::RadioButton("GMRes", cur_solver == Mint_Linear_Solver::gmres))  { cur_solver = Mint_Linear_Solver::gmres; } 
-
-
-
-	if (ImGui::Button("(re)Load Boundary")) {
-
-		polyscope::warning("The chosen .bound file does not match the loaded mesh.");
-		// executes when button is pressed
-		// directory_path = fileSelectSubroutine();
-		show_exploded_moments(moment_view_mode);
-	}
-
-	ImGui::SameLine();
-
-	ImGui::SetNextItemOpen(true, ImGuiCond_Once);
-
-	if (ImGui::TreeNode("Exploded Boundary Select options"))
-	{
-
-		// ImGui::Text("Start penzil.app to annotate model");
-
-		// ImGui::Text("Load From File");
-
-		if (ImGui::Button("Start penzil.app to annotate model")) {
-
-	//		show_exploded_moments(moment_view_mode);
-
-		}
-		if (ImGui::Button("Load From File")) {
-
-	//		show_exploded_moments(moment_view_mode);
-		}
-
-		ImGui::TreePop();
-
-	}
-
-
-
-
-	if (ImGui::Button("Compute and Load normal boundary")) {
-
-		show_exploded_moments(moment_view_mode);
-
-	}
-
-
-
-
-
-
-        // ImGui::PushItemWidth(100);
-        // ImGui::SliderFloat("Exploded Spacing", &exploded_spacing, 0.0f, 150.0f, "ratio = %.3f");
-        // ImGui::PopItemWidth();
-
-        // ImGui::Text("Which moments to show");
-        // if (ImGui::RadioButton("4th", moment_view_mode == Moments_To_Show::fourth))  
-        // { 
-        //     moment_view_mode = Moments_To_Show::fourth; 
-        //     // polyscope::state::lengthScale = 5.;
-        // } ImGui::SameLine();
-        // if (ImGui::RadioButton("2nd", moment_view_mode == Moments_To_Show::second))  { moment_view_mode = Moments_To_Show::second; } ImGui::SameLine();
-        // if (ImGui::RadioButton("both", moment_view_mode == Moments_To_Show::both))  { moment_view_mode = Moments_To_Show::both; } 
-
-
-
-        // if (ImGui::Checkbox("show boundary", &showBoundary)) { show_constraint_vals(); }ImGui::SameLine();
-        // if (ImGui::Checkbox("show interior tets", &showInteriorTets)) { show_constraint_vals(); }
-
-
-        ImGui::TreePop();
-
-    }
-
-
-
  
 
 
 
 
 
+
+
+
+	// ImGui::PopItemWidth();
+
+    auto winsizehack = ImGui::GetWindowSize();
+
+
+    ImGui::End();
+    ImGui::PopID();
+
     ImGui::ShowDemoWindow(); 
 
-	ImGui::PopItemWidth();
+    ImGui::SetWindowSize( winsizehack ); 
 }
 
 }
