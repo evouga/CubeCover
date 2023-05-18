@@ -1014,9 +1014,9 @@ void MintGUI::gui_callback()
     ImGui::PushID("file_browser");
     
     ImGui::SetNextWindowPos(ImVec2(polyscope::view::windowWidth -(600 ), 600),ImGuiCond_Once);
-    ImGui::SetNextWindowSize(ImVec2(1000, 0.));
+    ImGui::SetNextWindowSize(ImVec2(1000, 500.));
 
-    ImGui::Begin("File Browser", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
+    ImGui::Begin("File Browser", nullptr, ImGuiWindowFlags_NoSavedSettings);
 
     // ImGui::SetNextWindowPos(ImVec2((400 ), 50), ImGuiCond_Once);
     // ImGui::SetNextWindowSize(ImVec2(1000, 0.));
