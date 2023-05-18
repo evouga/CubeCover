@@ -168,11 +168,11 @@ namespace MintFrontend
 
         float color_range_min;
         float color_range_max;
-        float transparancy_interior; // TODO wire this up.
-        float transparancy_boundary; 
+
+        float transparency_tets;
+        float transparency_surf;
 
 
-     
 
     // bool readEdgeCurl(const std::string& edges_mintFilename, 
     //                   const std::string& edgeCurlFilename,  

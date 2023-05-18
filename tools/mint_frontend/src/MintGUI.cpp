@@ -89,6 +89,9 @@ static void HelpMarker(const char* desc)
         exploded_spacing_inp = 1.;
         exploded_spacing_intern = 1.;
 
+        transparency_tets = .6;
+        transparency_surf = .9;
+
         color_range_min = 0.;
         color_range_max = 1.;
 
@@ -99,9 +102,6 @@ static void HelpMarker(const char* desc)
         mint_mode = Mint_Integrability_Mode::free;
         shell_mode = Mint_Frame_Projection::offshell;
         metric_mode = Mint_Moment_Metric::four;
-
-        transparancy_interior = .7;
-        transparancy_boundary = .9;
 
 
 
@@ -160,8 +160,8 @@ void MintGUI::show_base_mesh()
     clear_polyscope_state();
     polyscope::options::automaticallyComputeSceneExtents = true;
 
-    auto tet_mesh = polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7);
-    auto surf_mesh = polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7);
+    auto tet_mesh = polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(transparency_tets);
+    auto surf_mesh = polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(transparency_surf);
 
     rescale_structure(tet_mesh);
     rescale_structure(surf_mesh);
@@ -218,6 +218,11 @@ void MintGUI::show_frame_field(MintFrontend::Frames_To_Show frame_field_view_mod
 
 
     clear_polyscope_state();
+
+
+    transparency_tets = .3;
+    transparency_surf = .2;
+
     set_base_mesh();
     set_frame_field();
 
@@ -269,23 +274,34 @@ void MintGUI::show_gl3_frame_field()
             double mag = framefieldvecs[i].row(0).norm() +  framefieldvecs[i].row(1).norm() +  framefieldvecs[i].row(2).norm();
             std::cout << mag << std::endl;
 
-            vf->setVectorColor({ dist(rng),dist(rng),dist(rng) });
+            // vf->setVectorColor({ dist(rng),dist(rng),dist(rng) });
+            glm::vec3 vec_col = {.1,.1,.1};
+            vec_col[i % 3] = .9;
+            if (i >= 3)
+                vec_col[(i+1) % 3] = .5;
+
+            vf->setVectorColor(vec_col);
             vf->setVectorRadius(0.001);
             vf->setEnabled(true);
         }
 
         rescale_structure(tetc);
 
+        glm::mat4x4 trans = tetc->getTransform();
+
         
 
         auto *green = polyscope::registerCurveNetwork("singularity(+1/4)", Pgreen, Egreen);
         green->setColor({ 0.0,1.0,0.0 });
+        green->setTransform(trans);
 
         auto *blue = polyscope::registerCurveNetwork("singularity(-1/4)", Pblue, Eblue);
         blue->setColor({ 0.0,0.0,1.0 });
+        blue->setTransform(trans);
 
         auto *black = polyscope::registerCurveNetwork("singularity(other)", Pblack, Eblack);
         black->setColor({ 0.0,0.0,0.0 });
+        black->setTransform(trans);
 
 }
 
@@ -426,7 +442,7 @@ void MintGUI::show_moments_all()
                 auto cur_mesh = polyscope::registerTetMesh(std::to_string(10000 + cur_id) + "____" +moment_labels.at(cur_id), V, T);
 
 
-                cur_mesh->setEdgeWidth(0.5)->setTransparency(transparancy_interior);
+                cur_mesh->setEdgeWidth(0.5)->setTransparency(transparency_tets);
                 rescale_structure(cur_mesh);
  
 
@@ -446,7 +462,7 @@ void MintGUI::show_moments_all()
 
 
 
-                surf_mesh->setEdgeWidth(1)->setTransparency(transparancy_boundary);
+                surf_mesh->setEdgeWidth(1)->setTransparency(transparency_surf);
                 rescale_structure(surf_mesh);
                 surf_mesh->translate(shift);
 
@@ -504,7 +520,7 @@ void MintGUI::show_moments_4th()
                 auto cur_mesh = polyscope::registerTetMesh(std::to_string(10000 + cur_id) + "____" +moment_labels.at(cur_id), V, T);
 
 
-                cur_mesh->setEdgeWidth(0.5)->setTransparency(.7);
+                cur_mesh->setEdgeWidth(0.5)->setTransparency(transparency_tets);
                 rescale_structure(cur_mesh);
                 cur_mesh->translate(shift);
                 Eigen::VectorXd tmp_mvals = M_curr.block(0,cur_id,mesh.nTets(),cur_id+1);
@@ -522,7 +538,7 @@ void MintGUI::show_moments_4th()
 
 
 
-                surf_mesh->setEdgeWidth(1)->setTransparency(.9);
+                surf_mesh->setEdgeWidth(1)->setTransparency(transparency_surf);
                 rescale_structure(surf_mesh);
                 surf_mesh->translate(shift);
 
@@ -539,8 +555,7 @@ void MintGUI::show_moments_4th()
             // std::cout << "tet_mesh_" + std::to_string(1000 + cur_id) + " " <<  glm::to_string(cur_mesh->getTransform()) << std::endl;
         }
     }
-    // polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7);
-    // polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7);
+
     polyscope::options::automaticallyComputeSceneExtents = false;
     polyscope::state::lengthScale = polyscope::state::lengthScale * 3.;
 
@@ -580,7 +595,7 @@ void MintGUI::show_moments_2nd()
 				auto cur_mesh = polyscope::registerTetMesh(std::to_string(10000 + cur_id) + "____" + moment_labels.at(cur_id), V, T);
 
 
-				cur_mesh->setEdgeWidth(0.5)->setTransparency(.7);
+				cur_mesh->setEdgeWidth(0.5)->setTransparency(transparency_tets);
 				rescale_structure(cur_mesh);
 				cur_mesh->translate(shift);
 				Eigen::VectorXd tmp_mvals = M_curr.block(0, cur_id, mesh.nTets(), cur_id + 1);
@@ -599,7 +614,7 @@ void MintGUI::show_moments_2nd()
 
 
 
-				surf_mesh->setEdgeWidth(1)->setTransparency(.9);
+				surf_mesh->setEdgeWidth(1)->setTransparency(transparency_surf);
 				rescale_structure(surf_mesh);
 				surf_mesh->translate(shift);
 
@@ -616,8 +631,7 @@ void MintGUI::show_moments_2nd()
 			// std::cout << "tet_mesh_" + std::to_string(1000 + cur_id) + " " <<  glm::to_string(cur_mesh->getTransform()) << std::endl;
 		
 	}
-	// polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(.7);
-	// polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(.7);
+
 	polyscope::options::automaticallyComputeSceneExtents = false;
 	polyscope::state::lengthScale = polyscope::state::lengthScale * 3.;
 
@@ -1208,6 +1222,13 @@ void MintGUI::gui_main_control_panel_callback()
         ImGui::SliderFloat("M", &color_range_max, 0.0f, 1.0f, "max = %.3f");
         ImGui::PopItemWidth();
  
+
+        ImGui::PushItemWidth(100);
+        ImGui::SliderFloat("tt", &transparency_tets, 0.0f, 1.0f, "tet_transp = %.3f");
+        ImGui::PopItemWidth();ImGui::SameLine();
+        ImGui::PushItemWidth(100);
+        ImGui::SliderFloat("ts", &transparency_surf, 0.0f, 1.0f, "surf_transp = %.3f");
+        ImGui::PopItemWidth();
  
 
         ImGui::PushItemWidth(100);
