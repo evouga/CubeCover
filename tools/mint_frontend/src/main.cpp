@@ -523,9 +523,16 @@ std::cout << "per_tet_sum abs min" << per_tet_sum_curl_min << std::endl;
     // gui->path_mesh = "/home/josh/Documents/MATLAB/integrable-frames-3d/meshes/TetWild/square_slab_1000.mesh";
     // gui->set_base_mesh();
     // gui->show_base_mesh();
+
+
+#if defined(WIN32) ||  defined(_WIN32)
+	 gui->path_outdir = "C:\\Users\\fool\\Documents\\MATLAB\\integrable-moments\\output_frames_dir\\disk_idx_1_free_test_spectral_bound";
+
+#elif defined(__unix__)
    gui->path_outdir = "/home/josh/Documents/MATLAB/integrable-frames-3d/output_frames_dir/disk_idx_1_free_test_spectral_bound/";
 
-	// gui->path_outdir = "C:\\Users\\fool\\Documents\\MATLAB\\integrable-moments\\output_frames_dir\\disk_idx_1_free_test_spectral_bound";
+#endif
+ 
     gui->load_state_from_output_dir();
 
 		/*

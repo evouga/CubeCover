@@ -92,6 +92,8 @@ static void HelpMarker(const char* desc)
         transparency_tets = .6;
         transparency_surf = .9;
 
+        viz_scale = 1;
+
         color_range_min = 0.;
         color_range_max = 1.;
 
@@ -166,11 +168,27 @@ void MintGUI::show_base_mesh()
     rescale_structure(tet_mesh);
     rescale_structure(surf_mesh);
 
+    // tet_mesh->rescaleToUnit();
+    // surf_mesh->rescaleToUnit();
+
     // tet_mesh->resetTransform();
     // surf_mesh->resetTransform();
+
+    glm::mat4x4 trans = tet_mesh->getTransform();
+
+    std::cout << glm::to_string(trans) << std::endl;
+
+	rescale_structure(tet_mesh);
+	rescale_structure(surf_mesh);
     
         // std::cout << "V: " << V.size() << std::endl;
         // std::cout << "T: " << T << std::endl;
+    // polyscope::options::automaticallyComputeSceneExtents = false;
+    // polyscope::state::lengthScale = polyscope::state::lengthScale * 1/3.;
+
+    // polyscope::view::resetCameraToHomeView();
+
+
 
     polyscope::view::resetCameraToHomeView();
 
@@ -229,6 +247,7 @@ void MintGUI::show_frame_field(MintFrontend::Frames_To_Show frame_field_view_mod
 	if (frame_field_view_mode == MintFrontend::Frames_To_Show::frames)
 	{
 		show_gl3_frame_field();
+        
 	}
 	if (frame_field_view_mode == MintFrontend::Frames_To_Show::split_frames)
 	{
@@ -388,18 +407,43 @@ void MintGUI::set_frame_field()
 void MintGUI::rescale_structure(polyscope::Structure* m)
 {
     m->resetTransform();
+
+    // #ifdef defined(WIN32) 
+
+    // tet_mesh->rescaleToUnit();
+    // surf_mesh->rescaleToUnit();
+
+    // tet_mesh->resetTransform();
+    // surf_mesh->resetTransform();
+
+
+
+    // #elif __unix__
+
+
+
+
     // m->centerBoundingBox();
     std::tuple<glm::vec3, glm::vec3> bbox = m->boundingBox();
     glm::vec3 bbox_diff = std::get<1>(bbox) - std::get<0>(bbox);
-    double scale_fac = std::max(bbox_diff.x, bbox_diff.y);
+    double scale_fac = std::max(bbox_diff.x, bbox_diff.y) * 1./(viz_scale*m->lengthScale());
 
-    // std::cout << "scale fac " << scale_fac << std::endl;
+    std::cout << "scale fac " << scale_fac << std::endl;
     exploded_spacing_intern = scale_fac;
     double currScale = scale_fac;
     float s = static_cast<float>(1.0 / scale_fac);
     glm::mat4x4 newTrans = glm::scale(glm::mat4x4(1.0), glm::vec3{s, s, s});
     m->setTransform(newTrans * m->getTransform());
     m->centerBoundingBox();
+
+
+
+
+    glm::mat4x4 trans = m->getTransform();
+
+    std::cout << glm::to_string(trans) << std::endl;
+
+    // #endif
 
 }
 
@@ -435,6 +479,7 @@ void MintGUI::show_moments_all()
 
             float exploded_spacing = exploded_spacing_intern * exploded_spacing_inp;
             glm::vec3 shift(-j * exploded_spacing, -i * exploded_spacing, 0);
+            shift = shift * viz_scale;
 
             if (showInteriorTets)
             {
@@ -513,6 +558,7 @@ void MintGUI::show_moments_4th()
 
             float exploded_spacing = exploded_spacing_intern * exploded_spacing_inp;
             glm::vec3 shift(-j * exploded_spacing, -i * exploded_spacing, 0);
+            shift = shift * viz_scale;
 
             if (showInteriorTets)
             {
@@ -588,6 +634,7 @@ void MintGUI::show_moments_2nd()
 
 			double ang = i / 6. * 2. * 3.141562;
 			glm::vec3 shift( (2 + std::cos(ang) ) * exploded_spacing, std::sin(ang) * exploded_spacing, 0);
+            shift = shift * viz_scale;
 
 			if (showInteriorTets)
 			{
@@ -1229,7 +1276,12 @@ void MintGUI::gui_main_control_panel_callback()
         ImGui::PushItemWidth(100);
         ImGui::SliderFloat("ts", &transparency_surf, 0.0f, 1.0f, "surf_transp = %.3f");
         ImGui::PopItemWidth();
- 
+
+        ImGui::PushItemWidth(100);
+        ImGui::DragFloat("ts", &viz_scale, 0.005f, 0.0f, 0.0f, "scale_viz = %.3f");
+        ImGui::PopItemWidth();
+        
+//   ImGui::DragFloat("drag float", &f1, 0.005f);
 
         ImGui::PushItemWidth(100);
         

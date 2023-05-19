@@ -172,6 +172,8 @@ namespace MintFrontend
         float transparency_tets;
         float transparency_surf;
 
+        float viz_scale;
+
 
 
     // bool readEdgeCurl(const std::string& edges_mintFilename, 
