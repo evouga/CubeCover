@@ -51,16 +51,17 @@ namespace MintFrontend
         void load_state_from_output_dir();
 
 
-        void show_base_mesh();
+        void show_base_mesh(const std::string &id, glm::vec3 shift);
 		void show_exploded_moments(Moments_To_Show moment_view_mode);
 		void show_moments_2nd();
         void show_moments_4th();
         void show_moments_all();
 
-        void show_mesh();
+
         void show_frame_field(Frames_To_Show frame_field_view_mode);
         
-        void show_gl3_frame_field();
+        void show_gl3_frame_field(const std::string &id, glm::vec3 shift);
+        void show_gl3_split();
         void show_integrated_quantities();
 
         void integrate_frame_field();
@@ -73,6 +74,9 @@ namespace MintFrontend
 
         void rescale_structure(polyscope::Structure* m);
         void set_base_mesh();
+        void set_frame_field();
+
+
         // void select_mesh();
         // void select_boundary();
         // void select_mint_output_dir();
@@ -80,7 +84,7 @@ namespace MintFrontend
         void set_comment();
 
         char* file_select_subroutine();
-        void set_frame_field();
+
         
 
         void gui_callback();
@@ -132,6 +136,7 @@ namespace MintFrontend
         // Field viz 
         Eigen::MatrixXd centroids;
         std::vector<Eigen::MatrixXd> framefieldvecs;
+        Eigen::MatrixXd splitCurls;
 
 
         // Curve network viz stuff 

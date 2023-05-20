@@ -18,4 +18,12 @@ void buildFrameVectors(const Eigen::MatrixXd& V,
     std::vector<Eigen::MatrixXd>& frameVectors
     );
 
+
+void computePerVectorCurl(const Eigen::MatrixXd& V,
+    const CubeCover::TetMeshConnectivity& mesh,
+    const CubeCover::FrameField& field,
+    const std::vector<Eigen::MatrixXd>& frameVectors,   
+    Eigen::MatrixXd& splitCurl
+    );    
+
 #endif

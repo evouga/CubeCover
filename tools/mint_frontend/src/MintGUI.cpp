@@ -156,14 +156,14 @@ FileParts MintGUI::fileparts(const std::string &fullpath)
 }
 
 
-void MintGUI::show_base_mesh()
+void MintGUI::show_base_mesh(const std::string &id, glm::vec3 shift)
 {
     std::cout << "show_base_mesh" << std::endl;
     clear_polyscope_state();
     polyscope::options::automaticallyComputeSceneExtents = true;
 
-    auto tet_mesh = polyscope::registerTetMesh("tet_mesh", V, T)->setEdgeWidth(0.5)->setTransparency(transparency_tets);
-    auto surf_mesh = polyscope::registerSurfaceMesh("surf_mesh", V, bdryF)->setEdgeWidth(1)->setTransparency(transparency_surf);
+    auto tet_mesh = polyscope::registerTetMesh("tet_mesh_"+id, V, T)->setEdgeWidth(0.5)->setTransparency(transparency_tets);
+    auto surf_mesh = polyscope::registerSurfaceMesh("surf_mesh_"+id, V, bdryF)->setEdgeWidth(1)->setTransparency(transparency_surf);
 
     rescale_structure(tet_mesh);
     rescale_structure(surf_mesh);
@@ -178,8 +178,8 @@ void MintGUI::show_base_mesh()
 
     std::cout << glm::to_string(trans) << std::endl;
 
-	rescale_structure(tet_mesh);
-	rescale_structure(surf_mesh);
+	// rescale_structure(tet_mesh);
+	// rescale_structure(surf_mesh);
     
         // std::cout << "V: " << V.size() << std::endl;
         // std::cout << "T: " << T << std::endl;
@@ -246,12 +246,14 @@ void MintGUI::show_frame_field(MintFrontend::Frames_To_Show frame_field_view_mod
 
 	if (frame_field_view_mode == MintFrontend::Frames_To_Show::frames)
 	{
-		show_gl3_frame_field();
+
+        show_base_mesh("0",glm::vec3(0,0,0));
+		show_gl3_frame_field("0", glm::vec3(0,0,0) );
         
 	}
 	if (frame_field_view_mode == MintFrontend::Frames_To_Show::split_frames)
 	{
-		// show_moments_2nd();
+		show_gl3_split();
 	}
 	if (frame_field_view_mode == MintFrontend::Frames_To_Show::split_moments)
 	{
@@ -270,8 +272,131 @@ void MintGUI::show_frame_field(MintFrontend::Frames_To_Show frame_field_view_mod
 	std::cout << "end show_exploded_frame_field" << std::endl;
 }
 
+void MintGUI::show_gl3_split()
+{
 
-void MintGUI::show_gl3_frame_field()
+	std::cout << "show_constraint_vals" << std::endl;
+	clear_polyscope_state();
+	// polyscope::options::automaticallyComputeSceneExtents = true;
+	// // polyscope::state::lengthScale = polyscope::state::lengthScale * 1/5.;
+
+    polyscope::options::automaticallyComputeSceneExtents = true;
+
+    float exploded_spacing = exploded_spacing_intern * exploded_spacing_inp;
+    polyscope::state::boundingBox = std::tuple<glm::vec3, glm::vec3>{glm::vec3{1,-2, -1.}*exploded_spacing, glm::vec3{3,1, 1.}*exploded_spacing};
+    polyscope::state::lengthScale = 1.2;
+
+    std::pair<double,double> colrng = std::pair<double,double>(color_range_min,color_range_max);
+
+	for (int i = 0; i < 6; i++)
+	{
+
+			int cur_id = i + 16;
+
+			double ang = i / 6. * 2. * 3.141562;
+			glm::vec3 shift( (2 + std::cos(ang) ) * exploded_spacing, std::sin(ang) * exploded_spacing, 0);
+            shift = shift * viz_scale;
+
+            // Draw base mesh 
+            auto tet_mesh = polyscope::registerTetMesh("tet_mesh_"+std::to_string(i), V, T)->setEdgeWidth(0.5)->setTransparency(transparency_tets);
+    // auto surf_mesh = polyscope::registerSurfaceMesh("surf_mesh_"+id, V, bdryF)->setEdgeWidth(1)->setTransparency(transparency_surf);
+
+            rescale_structure(tet_mesh);
+            // rescale_structure(surf_mesh);
+            tet_mesh->translate(shift);
+            polyscope::getVolumeMesh("tet_mesh_"+std::to_string(i))->addCellScalarQuantity("curls", splitCurls.col(i))->setEnabled(true);
+
+
+            // Draw Split frame field
+
+            auto *tetc = polyscope::registerPointCloud("Centroids_"+std::to_string(i), centroids);
+            glm::vec3 dotcolor(0.1, 0.1, 0.1);
+            tetc->setPointColor(dotcolor);
+            tetc->setPointRadius(0.001);
+            int vpf = framefieldvecs.size();
+
+            tetc->setTransform(tet_mesh->getTransform());
+            // rescale_structure(tetc);
+		    // tetc->translate(shift);
+
+            std::stringstream ss;
+            ss << "Frame Vector " << i;
+            auto *vf = tetc->addVectorQuantity(ss.str(), framefieldvecs[i]);
+            double mag = framefieldvecs[i].row(0).norm() +  framefieldvecs[i].row(1).norm() +  framefieldvecs[i].row(2).norm();
+            std::cout << mag << std::endl;
+
+            // vf->setVectorColor({ dist(rng),dist(rng),dist(rng) });
+            glm::vec3 vec_col = {.1,.1,.1};
+            vec_col[((i / 2) + 1) % 3] += .5 * (i % 2);
+            vec_col[i / 2] = .9;
+            // if (i >= 3)
+            //     vec_col[(i+1) % 3] = .5;
+
+            vf->setVectorColor(vec_col);
+            vf->setVectorRadius(0.001);
+            vf->setEnabled(true);
+    }
+
+
+
+
+			// if (showInteriorTets)
+			// {
+			// 	// auto cur_mesh = polyscope::registerTetMesh(moment_labels.at(cur_id) + "_tm_" + std::to_string(1000000 + cur_id), V, T);
+			// 	auto cur_mesh = polyscope::registerTetMesh(std::to_string(10000 + cur_id) + "____" + moment_labels.at(cur_id), V, T);
+
+
+			// 	cur_mesh->setEdgeWidth(0.5)->setTransparency(transparency_tets);
+			// 	rescale_structure(cur_mesh);
+			// 	cur_mesh->translate(shift);
+			// 	Eigen::VectorXd tmp_mvals = M_curr.block(0, cur_id, mesh.nTets(), cur_id + 1);
+            //     cur_mesh->addCellScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
+            //     if (useSameColorRangeForAllMoments)
+            //     {
+            //         cur_mesh->addCellScalarQuantity("cur-moment", tmp_mvals)->setMapRange(colrng)->setEnabled(true);
+            //     }
+				
+			// }
+
+			// if (showBoundary)
+			// {
+			// 	// auto surf_mesh = polyscope::registerSurfaceMesh(moment_labels.at(cur_id) + "_sm_" + std::to_string(1000000 + cur_id), V, bdryF);
+			// 	auto surf_mesh = polyscope::registerSurfaceMesh(std::to_string(20000 + cur_id) + "____" + moment_labels.at(cur_id), V, bdryF);
+
+
+
+			// 	surf_mesh->setEdgeWidth(1)->setTransparency(transparency_surf);
+			// 	rescale_structure(surf_mesh);
+			// 	surf_mesh->translate(shift);
+
+			// 	// std::cout << M_curr.rows()-mesh.nTets() << " diff " << M_curr.rows()-mesh.nTets() - bdryF.rows() << std::endl;
+			// 	Eigen::VectorXd tmp_mvals = M_curr.block(mesh.nTets(), cur_id, bdryF.rows(), cur_id + 1);
+			// 	surf_mesh->addFaceScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
+            //     if (useSameColorRangeForAllMoments)
+            //     {
+            //         surf_mesh->addFaceScalarQuantity("cur-moment", tmp_mvals)->setMapRange(colrng)->setEnabled(true);
+            //     }
+			// }
+
+
+			// std::cout << "tet_mesh_" + std::to_string(1000 + cur_id) + " " <<  glm::to_string(cur_mesh->getTransform()) << std::endl;
+		
+	
+
+	polyscope::options::automaticallyComputeSceneExtents = false;
+	polyscope::state::lengthScale = polyscope::state::lengthScale * 3.;
+
+	polyscope::view::resetCameraToHomeView();
+	// polyscope::state::boundingBox = 
+	//     std::tuple<glm::vec3, glm::vec3>{ {-2.5, -1.5, -1.}, {2.5, 1.5, 1.} };
+}
+
+
+
+
+
+
+void MintGUI::show_gl3_frame_field(const std::string &id, glm::vec3 shift)
 {
    std::cout << "show_constraint_vals" << std::endl;
     
@@ -280,7 +405,7 @@ void MintGUI::show_gl3_frame_field()
     std::mt19937 rng(dev());
     std::uniform_real_distribution<double> dist(0.0, 1.0);
 
-        auto *tetc = polyscope::registerPointCloud("Centroids", centroids);
+        auto *tetc = polyscope::registerPointCloud("Centroids_"+id, centroids);
         glm::vec3 dotcolor(0.1, 0.1, 0.1);
         tetc->setPointColor(dotcolor);
         tetc->setPointRadius(0.001);
@@ -295,9 +420,8 @@ void MintGUI::show_gl3_frame_field()
 
             // vf->setVectorColor({ dist(rng),dist(rng),dist(rng) });
             glm::vec3 vec_col = {.1,.1,.1};
-            vec_col[i % 3] = .9;
-            if (i >= 3)
-                vec_col[(i+1) % 3] = .5;
+            vec_col[((i / 2) + 1) % 3] += .5 * (i % 2);
+            vec_col[i / 2] = .9;
 
             vf->setVectorColor(vec_col);
             vf->setVectorRadius(0.001);
@@ -310,15 +434,15 @@ void MintGUI::show_gl3_frame_field()
 
         
 
-        auto *green = polyscope::registerCurveNetwork("singularity(+1/4)", Pgreen, Egreen);
+        auto *green = polyscope::registerCurveNetwork("singularity(+1/4)_"+id, Pgreen, Egreen);
         green->setColor({ 0.0,1.0,0.0 });
         green->setTransform(trans);
 
-        auto *blue = polyscope::registerCurveNetwork("singularity(-1/4)", Pblue, Eblue);
+        auto *blue = polyscope::registerCurveNetwork("singularity(-1/4)_"+id, Pblue, Eblue);
         blue->setColor({ 0.0,0.0,1.0 });
         blue->setTransform(trans);
 
-        auto *black = polyscope::registerCurveNetwork("singularity(other)", Pblack, Eblack);
+        auto *black = polyscope::registerCurveNetwork("singularity(other)_"+id, Pblack, Eblack);
         black->setColor({ 0.0,0.0,0.0 });
         black->setTransform(trans);
 
@@ -355,37 +479,25 @@ void MintGUI::set_frame_field()
     extractSingularCurveNetwork(V, mesh, *field, Pgreen, Egreen, Pblue, Eblue, Pblack, Eblack);
 
     buildFrameVectors(V, mesh, *field, 1.0, centroids, framefieldvecs);
+    computePerVectorCurl(V, mesh, *field, framefieldvecs, splitCurls );
 
-/*{
 
-
-    // visualize the seams
-
+    int nfaces = mesh.nFaces();
     std::vector<int> seamfaces;
-
-    int ninverted = 0;
-    int nnontrivial = 0;
 
     for (int i = 0; i < nfaces; i++)
     {
         if (!field->faceAssignment(i).isIdentity())
         {
             seamfaces.push_back(i);
-            nnontrivial++;
+            // nnontrivial++;
         }
-
-        if (field->faceAssignment(i).orientation() == -1)
-            ninverted++;
-    }
-
-    std::cout << "Non-identity face assignments: " << nnontrivial << std::endl;
-    if (ninverted > 0)
-    {
-        std::cout << "Warning: " << ninverted << " face assignments are orientation-reversing" << std::endl;
     }
 
     int nseamtris = seamfaces.size();
 
+
+///// TODO WIRE THIS INTO THE VIZUALIZER
     Eigen::MatrixXd seamV(3 * nseamtris, 3);
     Eigen::MatrixXi seamF(nseamtris, 3);
     for (int i = 0; i < nseamtris; i++)
@@ -398,7 +510,7 @@ void MintGUI::set_frame_field()
     }
 
 
-*/
+    
 
 }
 
@@ -408,25 +520,13 @@ void MintGUI::rescale_structure(polyscope::Structure* m)
 {
     m->resetTransform();
 
-    // #ifdef defined(WIN32) 
-
-    // tet_mesh->rescaleToUnit();
-    // surf_mesh->rescaleToUnit();
-
-    // tet_mesh->resetTransform();
-    // surf_mesh->resetTransform();
-
-
-
-    // #elif __unix__
-
-
-
-
-    // m->centerBoundingBox();
     std::tuple<glm::vec3, glm::vec3> bbox = m->boundingBox();
     glm::vec3 bbox_diff = std::get<1>(bbox) - std::get<0>(bbox);
-    double scale_fac = std::max(bbox_diff.x, bbox_diff.y) * 1./(viz_scale*m->lengthScale());
+
+    // double viz_scale_cur = viz_scale*m->lengthScale();
+    double viz_scale_cur = viz_scale;
+
+    double scale_fac = std::max(bbox_diff.x, bbox_diff.y) * 1./(viz_scale_cur);
 
     std::cout << "scale fac " << scale_fac << std::endl;
     exploded_spacing_intern = scale_fac;
@@ -699,20 +799,37 @@ void MintGUI::clear_polyscope_state()
 {
 
     std::cout << "clear_polyscope_state" << std::endl;
-    polyscope::removeStructure("tet_mesh", false);
-    polyscope::removeStructure("surf_mesh", false);
 
-	for (int cur_id = 0; cur_id < 22; cur_id++)
-	{
-		polyscope::removeStructure(std::to_string(10000 + cur_id) + "____" + moment_labels.at(cur_id), false);
-		polyscope::removeStructure(std::to_string(20000 + cur_id) + "____" + moment_labels.at(cur_id), false);
-	}
+    // polyscope::removeAllGroups();
+    polyscope::removeAllStructures();
 
-    // single frame field
-    polyscope::removeStructure("singularity(+1/4)", false);
-    polyscope::removeStructure("singularity(-1/4)", false);
-    polyscope::removeStructure("singularity(other)", false);
-    polyscope::removeStructure("Centroids", false);
+    // polyscope::removeStructure("tet_mesh_", false);
+    // polyscope::removeStructure("surf_mesh_", false);
+    // for (int cur_id = 0; cur_id < 6; cur_id++)
+	// {
+	// 	polyscope::removeStructure("tet_mesh_"+std::to_string(cur_id), false);
+    //     polyscope::removeStructure("tet_mesh_"+std::to_string(cur_id), false);
+	// }
+
+    // for (int cur_id = 0; cur_id < 22; cur_id++)
+	// {
+	// 	polyscope::removeStructure(std::to_string(10000 + cur_id) + "____" + moment_labels.at(cur_id), false);
+	// 	polyscope::removeStructure(std::to_string(20000 + cur_id) + "____" + moment_labels.at(cur_id), false);
+	// }
+
+
+
+	// for (int cur_id = 0; cur_id < 22; cur_id++)
+	// {
+	// 	polyscope::removeStructure(std::to_string(10000 + cur_id) + "____" + moment_labels.at(cur_id), false);
+	// 	polyscope::removeStructure(std::to_string(20000 + cur_id) + "____" + moment_labels.at(cur_id), false);
+	// }
+
+    // // single frame field
+    // polyscope::removeStructure("singularity(+1/4)", false);
+    // polyscope::removeStructure("singularity(-1/4)", false);
+    // polyscope::removeStructure("singularity(other)", false);
+    // polyscope::removeStructure("Centroids", false);
 
 	std::cout << "end_clear_polyscope_state" << std::endl;
 
@@ -782,7 +899,7 @@ void MintGUI::set_base_mesh()
         // }
 
         
-        show_base_mesh();
+        // show_base_mesh(0,glm::vec3(0,0,0));
     }
 
 
@@ -877,7 +994,7 @@ void MintGUI::load_state_from_output_dir()
     // }
 
     set_base_mesh();
-    show_base_mesh();
+    show_base_mesh("0",glm::vec3(0,0,0));
 
 }
 
@@ -1151,6 +1268,7 @@ void MintGUI::gui_file_select_BROKEN()
         if (data == ".mesh" )
         {
             set_base_mesh();
+            show_base_mesh("0",glm::vec3(0,0,0));
         }
         else 
         {
@@ -1168,6 +1286,7 @@ void MintGUI::gui_file_select_BROKEN()
         if (data == ".mesh" )
         {
             set_base_mesh();
+            show_base_mesh("0",glm::vec3(0,0,0));
         }
         else 
         {
@@ -1278,7 +1397,7 @@ void MintGUI::gui_main_control_panel_callback()
         ImGui::PopItemWidth();
 
         ImGui::PushItemWidth(100);
-        ImGui::DragFloat("ts", &viz_scale, 0.005f, 0.0f, 0.0f, "scale_viz = %.3f");
+        ImGui::DragFloat("sv", &viz_scale, 0.005f, 0.0f, 0.0f, "scale_viz = %.3f");
         ImGui::PopItemWidth();
         
 //   ImGui::DragFloat("drag float", &f1, 0.005f);

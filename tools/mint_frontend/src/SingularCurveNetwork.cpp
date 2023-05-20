@@ -206,4 +206,6 @@ void extractSingularCurveNetwork(const Eigen::MatrixXd& V,
         Eblue(i, 0) = bluesingverts[v0];
         Eblue(i, 1) = bluesingverts[v1];
     }
+
+    std::cout << " blue " << Eblue.size() << " green " << Egreen.size() << " black " << Eblack.size() << " " << std::endl;
 }
