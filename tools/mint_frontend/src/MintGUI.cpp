@@ -160,7 +160,16 @@ void MintGUI::show_base_mesh(const std::string &id, glm::vec3 shift)
 {
     std::cout << "show_base_mesh" << std::endl;
     clear_polyscope_state();
-    polyscope::options::automaticallyComputeSceneExtents = true;
+    polyscope::options::automaticallyComputeSceneExtents = false;
+
+    float exploded_spacing = exploded_spacing_intern * exploded_spacing_inp;
+	float val = 5.;
+	glm::vec3 lbbox = glm::vec3{ -val,-val, -val };
+	glm::vec3 mbbox = glm::vec3{ val,val, val };
+
+    polyscope::state::boundingBox = std::tuple<glm::vec3, glm::vec3>{ lbbox, mbbox };
+    polyscope::state::lengthScale = 1.2;
+
 
     auto tet_mesh = polyscope::registerTetMesh("tet_mesh_"+id, V, T)->setEdgeWidth(0.5)->setTransparency(transparency_tets);
     auto surf_mesh = polyscope::registerSurfaceMesh("surf_mesh_"+id, V, bdryF)->setEdgeWidth(1)->setTransparency(transparency_surf);
@@ -280,7 +289,7 @@ void MintGUI::show_gl3_split()
 	// polyscope::options::automaticallyComputeSceneExtents = true;
 	// // polyscope::state::lengthScale = polyscope::state::lengthScale * 1/5.;
 
-    polyscope::options::automaticallyComputeSceneExtents = true;
+    polyscope::options::automaticallyComputeSceneExtents = false;
 
     float exploded_spacing = exploded_spacing_intern * exploded_spacing_inp;
     polyscope::state::boundingBox = std::tuple<glm::vec3, glm::vec3>{glm::vec3{1,-2, -1.}*exploded_spacing, glm::vec3{3,1, 1.}*exploded_spacing};
@@ -425,6 +434,7 @@ void MintGUI::show_gl3_frame_field(const std::string &id, glm::vec3 shift)
 
             vf->setVectorColor(vec_col);
             vf->setVectorRadius(0.001);
+            vf->setVectorLengthScale(1.);
             vf->setEnabled(true);
         }
 
@@ -540,8 +550,11 @@ void MintGUI::rescale_structure(polyscope::Structure* m)
 
 
     glm::mat4x4 trans = m->getTransform();
+    std::tuple<glm::vec3, glm::vec3> bbox_curr = m->boundingBox();
 
-    std::cout << glm::to_string(trans) << std::endl;
+    std::cout << " bbox 0 " << glm::to_string(std::get<0>(bbox_curr))  << " bbox 1 " << glm::to_string(std::get<1>(bbox_curr))  << std::endl;
+
+    // std::cout << glm::to_string(trans) << std::endl;
 
     // #endif
 
