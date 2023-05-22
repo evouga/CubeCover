@@ -45,7 +45,13 @@ void integrateFieldOnEdges(const Eigen::MatrixXd& V,
     Eigen::MatrixXd& integratedVals
 );
 
-
+void projectVertScalarsToTetFrames(const Eigen::MatrixXd& V,
+    const CubeCover::TetMeshConnectivity& mesh,
+    const CubeCover::FrameField& field,
+    const std::vector<Eigen::MatrixXd>& frameVectors,   
+    const Eigen::MatrixXd& integratedVals,
+    std::vector<Eigen::MatrixXd>& ret_frames
+);
 
 
 #endif

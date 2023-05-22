@@ -429,7 +429,7 @@ void MintGUI::show_gl3_frame_field(const std::string &id, glm::mat4x4 trans)
         {
             std::stringstream ss;
             ss << "Frame Vector " << i;
-            auto *vf = tetc->addVectorQuantity(ss.str(), framefieldvecs[i]);
+            auto *vf = tetc->addVectorQuantity(ss.str(), proj_framefieldvecs[i]);
             double mag = framefieldvecs[i].row(0).norm() +  framefieldvecs[i].row(1).norm() +  framefieldvecs[i].row(2).norm();
             std::cout << mag << std::endl;
 
@@ -511,7 +511,8 @@ void MintGUI::set_frame_field()
     buildFrameVectors(V, mesh, *field, 1.0, centroids, framefieldvecs);
     computePerVectorCurl(V, mesh, *field, framefieldvecs, splitCurls );
     makeEdgeSpanningTree(V, mesh, *field, 0, tree_traversal, tree_traversal_metadata);
-
+    integrateFieldOnEdges(V, mesh, *field, framefieldvecs, tree_traversal, tree_traversal_metadata, 0, treeIntegratedVals);
+    projectVertScalarsToTetFrames(V, mesh, *field, framefieldvecs,treeIntegratedVals, proj_framefieldvecs);
 
 
     int nfaces = mesh.nFaces();

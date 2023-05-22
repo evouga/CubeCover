@@ -312,3 +312,52 @@ void integrateFieldOnEdges(const Eigen::MatrixXd& V,
 
 
 
+void projectVertScalarsToTetFrames(const Eigen::MatrixXd& V,
+    const CubeCover::TetMeshConnectivity& mesh,
+    const CubeCover::FrameField& field,
+    const std::vector<Eigen::MatrixXd>& frameVectors,   
+    const Eigen::MatrixXd& integratedVals,
+    std::vector<Eigen::MatrixXd>& ret_frames
+)
+{ //     Eigen::MatrixXd& ret_frames,
+
+    int ntets = mesh.nTets();
+    int nverts = V.rows(); 
+    int nfaces = mesh.nFaces();
+    // int vpf = field.vectorsPerFrame();
+    int inner_iters = frameVectors.size();
+
+    ret_frames.resize(inner_iters);
+    for (int i = 0; i < inner_iters; i++)
+    {
+        ret_frames[i].resize(ntets, 3);
+    }
+
+
+    for(int i = 0; i < ntets; i++)
+    {
+        for(int j = 0; j < inner_iters; j++)
+        {
+            int v0 = mesh.tetVertex(i, 0);
+            int v1 = mesh.tetVertex(i, 1);
+            int v2 = mesh.tetVertex(i, 2);
+            int v3 = mesh.tetVertex(i, 3);
+
+            Eigen::Vector3d e1 = V.row(v1) - V.row(v0);
+            Eigen::Vector3d e2 = V.row(v2) - V.row(v0);
+            Eigen::Vector3d e3 = V.row(v3) - V.row(v0);
+
+            Eigen::Matrix3d m; 
+            m.row(0) = e1; m.row(1) = e2; m.row(2) = e3;
+            Eigen::Vector3d b; 
+            b(0) = integratedVals(v1,j) - integratedVals(v0,j);
+            b(1) = integratedVals(v2,j) - integratedVals(v0,j);
+            b(2) = integratedVals(v3,j) - integratedVals(v0,j);
+
+            Eigen::Vector3d f = m.ldlt().solve(b);
+
+            ret_frames[j].row(i) = f;
+        }
+
+    }
+}

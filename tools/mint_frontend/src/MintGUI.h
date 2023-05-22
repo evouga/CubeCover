@@ -141,6 +141,7 @@ namespace MintFrontend
         std::vector<Eigen::Vector4i> tree_traversal_metadata;
         Eigen::MatrixXd treeIntegratedVals;
         float integrated_period;
+        std::vector<Eigen::MatrixXd> proj_framefieldvecs;
 
 
         // Curve network viz stuff 
