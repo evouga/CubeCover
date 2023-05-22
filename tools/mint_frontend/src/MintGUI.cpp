@@ -287,7 +287,7 @@ void MintGUI::show_frame_field(MintFrontend::Frames_To_Show frame_field_view_mod
 void MintGUI::show_gl3_split()
 {
 
-	std::cout << "show_constraint_vals" << std::endl;
+	std::cout << "show_split_gl3" << std::endl;
 	clear_polyscope_state();
 	// polyscope::options::automaticallyComputeSceneExtents = true;
 	// // polyscope::state::lengthScale = polyscope::state::lengthScale * 1/5.;
@@ -402,6 +402,10 @@ void MintGUI::show_gl3_split()
 	polyscope::state::lengthScale = polyscope::state::lengthScale * 3.;
 
 	polyscope::view::resetCameraToHomeView();
+
+
+    std::cout << "end show_split_gl3" << std::endl;
+
 	// polyscope::state::boundingBox = 
 	//     std::tuple<glm::vec3, glm::vec3>{ {-2.5, -1.5, -1.}, {2.5, 1.5, 1.} };
 }
@@ -413,7 +417,7 @@ void MintGUI::show_gl3_split()
 
 void MintGUI::show_gl3_frame_field(const std::string &id, glm::mat4x4 trans)
 {
-   std::cout << "show_constraint_vals" << std::endl;
+   std::cout << "show gl3 field" << std::endl;
     
 
     std::random_device dev;
@@ -430,6 +434,10 @@ void MintGUI::show_gl3_frame_field(const std::string &id, glm::mat4x4 trans)
             std::stringstream ss;
             ss << "Frame Vector " << i;
             auto *vf = tetc->addVectorQuantity(ss.str(), proj_framefieldvecs[i]);
+
+            std::cout << "proj max" << proj_framefieldvecs[i].maxCoeff() << std::endl;
+            std::cout << "proj min" << proj_framefieldvecs[i].minCoeff() << std::endl;
+            std::cout << (framefieldvecs[i] - proj_framefieldvecs[i]).maxCoeff() << std::endl;
             double mag = framefieldvecs[i].row(0).norm() +  framefieldvecs[i].row(1).norm() +  framefieldvecs[i].row(2).norm();
             std::cout << mag << std::endl;
 
@@ -440,6 +448,7 @@ void MintGUI::show_gl3_frame_field(const std::string &id, glm::mat4x4 trans)
 
             vf->setVectorColor(vec_col);
             vf->setVectorRadius(0.001);
+            // vf->setVectorLengthScale(1.);
 #if defined(WIN32) ||  defined(_WIN32)
             vf->setVectorLengthScale(1.);
 #elif defined(__unix__)
@@ -473,6 +482,8 @@ void MintGUI::show_gl3_frame_field(const std::string &id, glm::mat4x4 trans)
 
         auto *spanning_tree = polyscope::registerCurveNetwork("spanning_tree", V, tree_traversal);
         spanning_tree->setTransform(trans);
+
+    std::cout << "end show gl3 field" << std::endl;
 
 }
 

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <Eigen/Geometry> 
 #include <deque>
+#include <string>
 
 void buildFrameVectors(const Eigen::MatrixXd& V,
     const CubeCover::TetMeshConnectivity& mesh,
@@ -257,7 +258,7 @@ void integrateFieldOnEdges(const Eigen::MatrixXd& V,
     Eigen::MatrixXd& integratedVals
 )
 {
-
+    std::cout << "start integrateFieldOnEdges" << std::endl;
 
     int ntets = mesh.nTets();
     int nverts = V.rows(); 
@@ -266,6 +267,7 @@ void integrateFieldOnEdges(const Eigen::MatrixXd& V,
 
     // integratedVals;
     integratedVals.resize(nverts, 2*vpf);
+    integratedVals.setZero();
     // integratedVals
 
     for (int i = 0; i < nverts-1; i++)
@@ -279,34 +281,52 @@ void integrateFieldOnEdges(const Eigen::MatrixXd& V,
         Eigen::VectorXd edge_diffs = src_vals*0;
         for (int j = 0; j < 2*vpf; j++)
         {
+            Eigen::Vector3d f = frameVectors.at(j).row(cur_tet_id);
+
             edge_diffs[j] = frameVectors.at(j).row(cur_tet_id).dot(cur_edge);
         }
 
         Eigen::VectorXd sink_vals = src_vals + edge_diffs;
-        if ( period > 0 )
-        {
-            sink_vals = sink_vals * 1./ period;
-            for (int j = 0; j < 2*vpf; j++)
-            {
-                sink_vals[j] = sink_vals[j] - std::floor(sink_vals[j]);
-                if (sink_vals[j] < 0.)
-                {
-                    sink_vals[j] = 1. - sink_vals[j];
-                }
-            }
-            sink_vals = sink_vals * period;
 
-        }
+        // // // std::cout << "period: " << period << "i " << i << "sink_vals " << sink_vals << std::endl;
+        // if ( period > 0 )
+        // {
+        //     sink_vals = sink_vals * 1./ period;
+        //     for (int j = 0; j < 2*vpf; j++)
+        //     {
+        //         std::cout << " sink_vals[j] " <<  sink_vals[j] << "floor sink_vals[j]" << std::floor(sink_vals[j]) << std::endl;
+        //         sink_vals[j] = sink_vals[j] - std::floor(sink_vals[j]);
+        //         if (sink_vals[j] < 0.)
+        //         {
+        //             sink_vals[j] = 1. - sink_vals[j];
+        //         }
+        //     }
+        //     sink_vals = sink_vals * period;
+
+        // }
 
         std::cout << sink_vals << std::endl;
+        if (std::isnan(sink_vals.sum()) )
+        {
+            std::cout << "i " << i << " sink_vals " << sink_vals << std::endl << " period " << period << std::endl 
+                      << "edge_diffs " << edge_diffs << std::endl << "cur_edge " << cur_edge << std::endl
+                      << "edge_diffs " << edge_diffs << std::endl << "edge_diffs " << edge_diffs << std::endl;
+            std::cout << "wtf???" << std::endl;
 
+            for (int j = 0; j < 2*vpf; j++)
+            {
+                std::cout << " sink_vals[j] " <<  sink_vals[j] << "floor sink_vals[j] " << std::floor(sink_vals[j]) << std::endl;
+            }
+
+            throw std::runtime_error("nan here");
+        }
         integratedVals.row(tree_traversal.at(i)[1]) = sink_vals;
 
 
 
     }
 
-
+    std::cout << "end integrateFieldOnEdges" << std::endl;
 
 }
 
@@ -328,6 +348,7 @@ void projectVertScalarsToTetFrames(const Eigen::MatrixXd& V,
     int inner_iters = frameVectors.size();
 
     ret_frames.resize(inner_iters);
+    // ret_frames.setZero();
     for (int i = 0; i < inner_iters; i++)
     {
         ret_frames[i].resize(ntets, 3);
@@ -356,8 +377,22 @@ void projectVertScalarsToTetFrames(const Eigen::MatrixXd& V,
 
             Eigen::Vector3d f = m.ldlt().solve(b);
 
+            if (std::isnan(f(0)) || std::isnan(f(1)) || std::isnan(f(2)))
+            {
+                f = Eigen::Vector3d(.1,.1,.1);
+            }
+
+            if ( f.norm() > 10. )
+            {
+                f = Eigen::Vector3d(.01,.01,.01);
+            }
+
+            // std::cout << f << std::endl;
+
             ret_frames[j].row(i) = f;
         }
 
     }
+
+    // std::cout << ret_frames[1] << std::endl;
 }
