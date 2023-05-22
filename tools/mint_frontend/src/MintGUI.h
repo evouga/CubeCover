@@ -60,7 +60,7 @@ namespace MintFrontend
 
         void show_frame_field(Frames_To_Show frame_field_view_mode);
         
-        void show_gl3_frame_field(const std::string &id, glm::vec3 shift);
+        void show_gl3_frame_field(const std::string &id, glm::mat4x4 trans);
         void show_gl3_split();
         void show_integrated_quantities();
 
@@ -137,6 +137,10 @@ namespace MintFrontend
         Eigen::MatrixXd centroids;
         std::vector<Eigen::MatrixXd> framefieldvecs;
         Eigen::MatrixXd splitCurls;
+        std::vector<Eigen::Vector2i> tree_traversal;
+        std::vector<Eigen::Vector4i> tree_traversal_metadata;
+        Eigen::MatrixXd treeIntegratedVals;
+        float integrated_period;
 
 
         // Curve network viz stuff 

@@ -85,7 +85,7 @@ void computePerVectorCurl(const Eigen::MatrixXd& V,
             b1.normalize();
 
 
-            std::cout << "sanity check should be 1" << b1.norm() << std::endl;
+            // std::cout << "sanity check should be 1: " << b1.norm() << std::endl;
 
             for (int j = 0; j < 2*vpf; j++)
             {
@@ -124,9 +124,9 @@ builds up an oriented list of edges this way.
 void makeEdgeSpanningTree(const Eigen::MatrixXd& V,
     const CubeCover::TetMeshConnectivity& mesh,
     const CubeCover::FrameField& field,
-    const std::vector<Eigen::MatrixXd>& frameVectors,   
     int startTetId,
-    Eigen::MatrixXd& splitCurl
+    std::vector<Eigen::Vector2i>& tree_traversal,
+    std::vector<Eigen::Vector4i>& tree_traversal_metadata
 )
 {
     int ntets = mesh.nTets();
@@ -139,8 +139,9 @@ void makeEdgeSpanningTree(const Eigen::MatrixXd& V,
 
     std::deque<int> tet_queue;
     std::vector<Eigen::Vector2i> edge_queue; // intexed as tetid, tetedge 
-
-    std::vector<Eigen::Vector2i> tree_traversal;
+    tree_traversal.clear();
+    tree_traversal_metadata.clear();
+    // std::vector<Eigen::Vector2i> tree_traversal;
 
     // std::vector<std::vector<Eigen::Vector2i>> // source vert id, sink vert id, 
 
@@ -148,18 +149,26 @@ void makeEdgeSpanningTree(const Eigen::MatrixXd& V,
 
     // BASE CASE. 
     int init_edge_id = mesh.tetEdge(cur_tid,0);
-    Eigen::Vector2i init_edge = Eigen::Vector2i(init_edge_id,1);
+    Eigen::Vector4i init_edge_metadata = Eigen::Vector4i(cur_tid, 0, init_edge_id, 1);
+
+    Eigen::Vector2i init_edge = Eigen::Vector2i(mesh.edgeVertex(init_edge_id,0),mesh.edgeVertex(init_edge_id,1));
+
     tree_traversal.push_back(init_edge);
+    tree_traversal_metadata.push_back(init_edge_metadata);
     vert_visited[mesh.edgeVertex(init_edge_id,0)] = 1;
     vert_visited[mesh.edgeVertex(init_edge_id,1)] = 1;
 
     tet_added_to_queue[cur_tid] += 1;
 
     tet_queue.push_back(cur_tid);
+    // std::deque<int>::iterator it = tet_queue.begin();
 
-
+    int iter = 0;
     while ( !tet_queue.empty() ) 
+    // while( it != tet_queue.end() )
     {
+        // cur_tid = *it;
+
         cur_tid = tet_queue.front();
         tet_queue.pop_front();
 
@@ -170,18 +179,26 @@ void makeEdgeSpanningTree(const Eigen::MatrixXd& V,
 
             int cur_face_id = mesh.tetFace(cur_tid, tetVert); // this might be wrong
 
+            // std::cout << "opp_tet_id " << opp_tet_id << " face id " << cur_face_id << "blah " << field.faceAssignment(cur_face_id).isIdentity() << std::endl;
+
+
             if (opp_tet_id > -1 && field.faceAssignment(cur_face_id).isIdentity())
             {
                 // If not in queue add it.
-                if (tet_added_to_queue[cur_tid] == 0)
+                std::cout << "got here " << std::endl;
+
+                if (tet_added_to_queue[opp_tet_id] == 0)
                 {
-                    tet_added_to_queue[cur_tid] = 1;
-                    tet_queue.push_back(cur_tid);
+                    tet_added_to_queue[opp_tet_id] = 1;
+                    tet_queue.push_back(opp_tet_id);
                 }
             }
 
         }
 
+        // it++;
+        iter++;
+        // std::cout << "boooooop" << iter << std::endl;
 
 
     // Process current tet
@@ -200,10 +217,20 @@ void makeEdgeSpanningTree(const Eigen::MatrixXd& V,
 
             if ( ( v0_val > 0 && v1_val == 0) || (v0_val == 0 && v1_val > 0) )
             {
+                int eid0 = mesh.edgeVertex(cur_edge_id,0);
+                int eid1 = mesh.edgeVertex(cur_edge_id,1);
+                
                 if (v1_val > 0)
+                {
+                    int eid0 = mesh.edgeVertex(cur_edge_id,1);
+                    int eid1 = mesh.edgeVertex(cur_edge_id,0);
                     orientation = -1;
-
-                tree_traversal.push_back( Eigen::Vector2i(cur_edge_id, orientation) );
+                }
+                    
+                Eigen::Vector4i cur_edge_metadata = Eigen::Vector4i(cur_tid, tetEdge, init_edge_id, orientation);
+                tree_traversal.push_back( Eigen::Vector2i(eid0,eid1) );
+                tree_traversal_metadata.push_back( cur_edge_metadata );
+                // tree_traversal.push_back( Eigen::Vector2i(cur_edge_id, orientation) );
 
                 vert_visited[mesh.edgeVertex( cur_edge_id, 0 )] += 1;
                 vert_visited[mesh.edgeVertex( cur_edge_id, 1 )] += 1;
@@ -215,99 +242,73 @@ void makeEdgeSpanningTree(const Eigen::MatrixXd& V,
 
     }
 
-// finish increment current tet id 
-
-
-
-
-    // for (int tetFace = 0; tetFace < 4; tetFace++)
-    // {
-    //     // tryAddNeighborTetToQueue(cur_tid, tet_visited);
-
-    //     mesh.tetEdge
-
-    //     for (int faceEdge = 0; faceEdge < 3; faceEdge++)
-    //     {
-    //         tryAddEdge(tree_traversal, tet_visited, vert_visited,tet_queue);
-    //     }
-    // }
-
-
-    for (int i = 0; i<ntets; i++)
-    {
-        // add neighbors to queue 
-        for (int j = 0; j < 4; j++)
-        {
-
-
-        }
-
-    }
-
-
-    // for (int i = 0; i < ntets; i++)
-    // { 
-
-
-    // }
-
-    splitCurl.resize(ntets, 6);
-
-    // Eigen::MatrixXd& 
-
-    for (int i = 0; i < nfaces; i++)
-    { 
-        if (!mesh.isBoundaryFace(i) && field.faceAssignment(i).isIdentity())
-        {
-            int tid0 = mesh.faceTet(i, 0);
-            int tid1 = mesh.faceTet(i, 1);
-
-            Eigen::Vector3d v0 = V.row(mesh.faceVertex(i, 0));
-            Eigen::Vector3d v1 = V.row(mesh.faceVertex(i, 1));
-            Eigen::Vector3d v2 = V.row(mesh.faceVertex(i, 2));
-            
-            Eigen::Vector3d fn = (v1 - v0).cross(v2 - v0);
-
-            Eigen::Vector3d b0 = fn.cross(v1-v0);
-            Eigen::Vector3d b1 = fn.cross(b0);
-            b0.normalize();
-            b1.normalize();
-
-
-            std::cout << "sanity check should be 1" << b1.norm() << std::endl;
-
-            for (int j = 0; j < 2*vpf; j++)
-            {
-                Eigen::Vector3d vf0 = frameVectors[j].row(tid0);
-                Eigen::Vector3d vf1 = frameVectors[j].row(tid1);
-
-                double faceCurl = (vf0.dot(b0) - vf1.dot(b0)) + (vf0.dot(b1) - vf1.dot(b1));
-                splitCurl(tid0,j) += faceCurl*faceCurl;
-                splitCurl(tid1,j) += faceCurl*faceCurl;
-
-            }  
-        }
-
-        // for (int j = 0; j < vpf; j++)
-        // {
-
-        // }  
-
-    }
-
-
-   
-
-
-
-
 }
 
 
 
 
+void integrateFieldOnEdges(const Eigen::MatrixXd& V,
+    const CubeCover::TetMeshConnectivity& mesh,
+    const CubeCover::FrameField& field,
+    const std::vector<Eigen::MatrixXd>& frameVectors,   
+    const std::vector<Eigen::Vector2i>& tree_traversal,
+    const std::vector<Eigen::Vector4i>& tree_traversal_metadata,
+    double period,
+    Eigen::MatrixXd& integratedVals
+)
+{
 
 
+    int ntets = mesh.nTets();
+    int nverts = V.rows(); 
+    int nfaces = mesh.nFaces();
+    int vpf = field.vectorsPerFrame();
+
+    // integratedVals;
+    integratedVals.resize(nverts, 2*vpf);
+    // integratedVals
+
+    for (int i = 0; i < nverts-1; i++)
+    {
+        // Eigen::MatrixXd cur_frame = frameVectors.at(i);
+        Eigen::Vector3d cur_edge = V.row(tree_traversal.at(i)[1]) - 
+                                       V.row(tree_traversal.at(i)[0]);
+
+        int cur_tet_id = tree_traversal_metadata.at(i)[0];
+        Eigen::VectorXd src_vals = integratedVals.row(tree_traversal.at(i)[0]);
+        Eigen::VectorXd edge_diffs = src_vals*0;
+        for (int j = 0; j < 2*vpf; j++)
+        {
+            edge_diffs[j] = frameVectors.at(j).row(cur_tet_id).dot(cur_edge);
+        }
+
+        Eigen::VectorXd sink_vals = src_vals + edge_diffs;
+        if ( period > 0 )
+        {
+            sink_vals = sink_vals * 1./ period;
+            for (int j = 0; j < 2*vpf; j++)
+            {
+                sink_vals[j] = sink_vals[j] - std::floor(sink_vals[j]);
+                if (sink_vals[j] < 0.)
+                {
+                    sink_vals[j] = 1. - sink_vals[j];
+                }
+            }
+            sink_vals = sink_vals * period;
+
+        }
+
+        std::cout << sink_vals << std::endl;
+
+        integratedVals.row(tree_traversal.at(i)[1]) = sink_vals;
+
+
+
+    }
+
+
+
+}
 
 
 

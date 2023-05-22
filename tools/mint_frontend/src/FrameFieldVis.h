@@ -26,4 +26,26 @@ void computePerVectorCurl(const Eigen::MatrixXd& V,
     Eigen::MatrixXd& splitCurl
     );    
 
+
+void makeEdgeSpanningTree(const Eigen::MatrixXd& V,
+    const CubeCover::TetMeshConnectivity& mesh,
+    const CubeCover::FrameField& field,
+    int startTetId,
+    std::vector<Eigen::Vector2i>& tree_traversal,
+    std::vector<Eigen::Vector4i>& tree_traversal_metadata
+);
+
+void integrateFieldOnEdges(const Eigen::MatrixXd& V,
+    const CubeCover::TetMeshConnectivity& mesh,
+    const CubeCover::FrameField& field,
+    const std::vector<Eigen::MatrixXd>& frameVectors,   
+    const std::vector<Eigen::Vector2i>& tree_traversal,
+    const std::vector<Eigen::Vector4i>& tree_traversal_metadata,
+    double period,
+    Eigen::MatrixXd& integratedVals
+);
+
+
+
+
 #endif

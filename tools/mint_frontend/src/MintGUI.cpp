@@ -100,6 +100,8 @@ static void HelpMarker(const char* desc)
         sel_idx_mom = -1;
         sel_idx_fra = -1;
 
+        integrated_period = 2*3.1415;
+
         cur_solver = Mint_Linear_Solver::exact;
         mint_mode = Mint_Integrability_Mode::free;
         shell_mode = Mint_Frame_Projection::offshell;
@@ -250,19 +252,20 @@ void MintGUI::show_frame_field(MintFrontend::Frames_To_Show frame_field_view_mod
     transparency_tets = .3;
     transparency_surf = .2;
 
-    set_base_mesh();
-    set_frame_field();
+
 
 	if (frame_field_view_mode == MintFrontend::Frames_To_Show::frames)
 	{
 
         show_base_mesh("0",glm::vec3(0,0,0));
-		show_gl3_frame_field("0", glm::vec3(0,0,0) );
+		show_gl3_frame_field("0", polyscope::getVolumeMesh("tet_mesh_0")->getTransform() );
         
 	}
 	if (frame_field_view_mode == MintFrontend::Frames_To_Show::split_frames)
 	{
+        integrateFieldOnEdges(V, mesh, *field, framefieldvecs, tree_traversal, tree_traversal_metadata, integrated_period, treeIntegratedVals);
 		show_gl3_split();
+
 	}
 	if (frame_field_view_mode == MintFrontend::Frames_To_Show::split_moments)
 	{
@@ -313,7 +316,10 @@ void MintGUI::show_gl3_split()
             rescale_structure(tet_mesh);
             // rescale_structure(surf_mesh);
             tet_mesh->translate(shift);
-            polyscope::getVolumeMesh("tet_mesh_"+std::to_string(i))->addCellScalarQuantity("curls", splitCurls.col(i))->setEnabled(true);
+
+            
+            polyscope::getVolumeMesh("tet_mesh_"+std::to_string(i))->addVertexScalarQuantity("integrated", treeIntegratedVals.col(i))->setEnabled(true);
+            polyscope::getVolumeMesh("tet_mesh_"+std::to_string(i))->addCellScalarQuantity("curls", splitCurls.col(i));
 
 
             // Draw Split frame field
@@ -405,7 +411,7 @@ void MintGUI::show_gl3_split()
 
 
 
-void MintGUI::show_gl3_frame_field(const std::string &id, glm::vec3 shift)
+void MintGUI::show_gl3_frame_field(const std::string &id, glm::mat4x4 trans)
 {
    std::cout << "show_constraint_vals" << std::endl;
     
@@ -434,13 +440,22 @@ void MintGUI::show_gl3_frame_field(const std::string &id, glm::vec3 shift)
 
             vf->setVectorColor(vec_col);
             vf->setVectorRadius(0.001);
+#if defined(WIN32) ||  defined(_WIN32)
             vf->setVectorLengthScale(1.);
+#elif defined(__unix__)
+ 
+#endif
+
+
+
             vf->setEnabled(true);
         }
 
-        rescale_structure(tetc);
+        tetc->setTransform(trans);
 
-        glm::mat4x4 trans = tetc->getTransform();
+        // rescale_structure(tetc);
+
+        // glm::mat4x4 trans = tetc->getTransform();
 
         
 
@@ -455,6 +470,9 @@ void MintGUI::show_gl3_frame_field(const std::string &id, glm::vec3 shift)
         auto *black = polyscope::registerCurveNetwork("singularity(other)_"+id, Pblack, Eblack);
         black->setColor({ 0.0,0.0,0.0 });
         black->setTransform(trans);
+
+        auto *spanning_tree = polyscope::registerCurveNetwork("spanning_tree", V, tree_traversal);
+        spanning_tree->setTransform(trans);
 
 }
 
@@ -488,8 +506,12 @@ void MintGUI::set_frame_field()
 
     extractSingularCurveNetwork(V, mesh, *field, Pgreen, Egreen, Pblue, Eblue, Pblack, Eblack);
 
+    // tree_traversal.clear();
+
     buildFrameVectors(V, mesh, *field, 1.0, centroids, framefieldvecs);
     computePerVectorCurl(V, mesh, *field, framefieldvecs, splitCurls );
+    makeEdgeSpanningTree(V, mesh, *field, 0, tree_traversal, tree_traversal_metadata);
+
 
 
     int nfaces = mesh.nFaces();
@@ -1027,9 +1049,17 @@ void MintGUI::gui_file_explorer_callback()
             {
                 if (ImGui::Selectable(file_names_fra.at(i).c_str(), sel_idx_fra == i))
                 {
-                    sel_idx_fra = i;
-                    path_fra = new char[512];
-                    strncpy(path_fra, folder_contents_fra.at(i).c_str(), 512);
+                    if( i != sel_idx_fra )
+                    {
+                        sel_idx_fra = i;
+                        sel_idx_mom = -1;
+                        path_fra = new char[512];
+                        strncpy(path_fra, folder_contents_fra.at(i).c_str(), 512);
+
+                        set_base_mesh();
+                        set_frame_field();
+                    }
+
                     // CubeCover::readMoments(path_constraints, M_curr, true);
                     // std::cout << path_constraints << std::endl;
                     show_frame_field(frame_field_view_mode);
@@ -1060,10 +1090,14 @@ void MintGUI::gui_file_explorer_callback()
             {
                 if (ImGui::Selectable(file_names.at(i).c_str(), sel_idx_mom == i))
                 {
-                    sel_idx_mom = i;
-                    path_constraints = new char[512];
-                    strncpy(path_constraints, folder_contents.at(i).c_str(), 512);
-                    CubeCover::readMoments(path_constraints, M_curr, true);
+                    if( i != sel_idx_mom )
+                    {
+                        sel_idx_fra = -1;
+                        sel_idx_mom = i;
+                        path_constraints = new char[512];
+                        strncpy(path_constraints, folder_contents.at(i).c_str(), 512);
+                        CubeCover::readMoments(path_constraints, M_curr, true);
+                    }
                     // std::cout << path_constraints << std::endl;
 					show_exploded_moments(moment_view_mode);
 
@@ -1474,6 +1508,17 @@ void MintGUI::gui_main_control_panel_callback()
 
             // polyscope::state::lengthScale = 5.;
         } 
+
+        ImGui::PushItemWidth(100);
+        ImGui::DragFloat("Integrated Period", &integrated_period, 0.005f, 0.0f, 1.0f, "integrated_period = %.3f");
+        ImGui::PopItemWidth();
+
+        // ImGui::PushItemWidth(100);
+        
+        // ImGui::SliderFloat("Exploded Spacing", &integrated_period, 0.0f, 150.0f, "ratio = %.3f");
+        // ImGui::PopItemWidth();
+
+        
         
         // if (ImGui::RadioButton("2nd", moment_view_mode == Moments_To_Show::second))  
 		// { 
