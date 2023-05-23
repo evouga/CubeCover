@@ -66,11 +66,14 @@ static void HelpMarker(const char* desc)
 
         mesh = CubeCover::TetMeshConnectivity();
 		moment_view_mode = Moments_To_Show::fourth;
-        frame_field_view_mode = Frames_To_Show::frames;
+        frame_field_load_type = Frames_To_Show::constant;
+        frame_field_view_mode = Frames_Show_Mode::frames;
 
         showBoundary = false;
         showInteriorTets = true;
         useSameColorRangeForAllMoments = false;
+
+        showFrameField = false;
 
 
         const char *args[] = {"x^4", "x^3 y", "x^3 z", "x^2 y^2", "x^2 y z", 
@@ -241,7 +244,7 @@ void MintGUI::show_exploded_moments(MintFrontend::Moments_To_Show moment_view_mo
 }
 
 
-void MintGUI::show_frame_field(MintFrontend::Frames_To_Show frame_field_view_mode)
+void MintGUI::show_frame_field(MintFrontend::Frames_Show_Mode frame_field_view_mode)
 {
     std::cout << "show_exploded_frame_field" << std::endl;
 
@@ -254,25 +257,25 @@ void MintGUI::show_frame_field(MintFrontend::Frames_To_Show frame_field_view_mod
 
 
 
-	if (frame_field_view_mode == MintFrontend::Frames_To_Show::frames)
+	if (frame_field_view_mode == MintFrontend::Frames_Show_Mode::frames)
 	{
 
         show_base_mesh("0",glm::vec3(0,0,0));
 		show_gl3_frame_field("0", polyscope::getVolumeMesh("tet_mesh_0")->getTransform() );
         
 	}
-	if (frame_field_view_mode == MintFrontend::Frames_To_Show::split_frames)
+	if (frame_field_view_mode == MintFrontend::Frames_Show_Mode::split_frames)
 	{
-        integrateFieldOnEdges(V, mesh, *field, framefieldvecs, tree_traversal, tree_traversal_metadata, integrated_period, treeIntegratedVals);
+        // integrateFieldOnEdges(V, mesh, *field, framefieldvecs, tree_traversal, tree_traversal_metadata, integrated_period, treeIntegratedVals);
 		show_gl3_split();
 
 	}
-	if (frame_field_view_mode == MintFrontend::Frames_To_Show::split_moments)
+	if (frame_field_view_mode == MintFrontend::Frames_Show_Mode::split_moments)
 	{
 		// show_moments_4th();
 		// show_moments_2nd();
 	}
-    if (frame_field_view_mode == MintFrontend::Frames_To_Show::split_difference)
+    if (frame_field_view_mode == MintFrontend::Frames_Show_Mode::split_difference)
 	{
 		// show_moments_4th();
 		// show_moments_2nd();
@@ -428,17 +431,17 @@ void MintGUI::show_gl3_frame_field(const std::string &id, glm::mat4x4 trans)
         glm::vec3 dotcolor(0.1, 0.1, 0.1);
         tetc->setPointColor(dotcolor);
         tetc->setPointRadius(0.001);
-        int vpf = framefieldvecs.size();
+        int vpf = curr_framefieldvecs.size();
         for (int i = 0; i < vpf; i++)
         {
             std::stringstream ss;
             ss << "Frame Vector " << i;
-            auto *vf = tetc->addVectorQuantity(ss.str(), proj_framefieldvecs[i]);
+            auto *vf = tetc->addVectorQuantity(ss.str(), curr_framefieldvecs[i]);
 
-            std::cout << "proj max" << proj_framefieldvecs[i].maxCoeff() << std::endl;
-            std::cout << "proj min" << proj_framefieldvecs[i].minCoeff() << std::endl;
-            std::cout << (framefieldvecs[i] - proj_framefieldvecs[i]).maxCoeff() << std::endl;
-            double mag = framefieldvecs[i].row(0).norm() +  framefieldvecs[i].row(1).norm() +  framefieldvecs[i].row(2).norm();
+            std::cout << "proj max" << curr_framefieldvecs[i].maxCoeff() << std::endl;
+            std::cout << "proj min" << curr_framefieldvecs[i].minCoeff() << std::endl;
+            std::cout << (framefieldvecs[i] - curr_framefieldvecs[i]).maxCoeff() << std::endl;
+            double mag = curr_framefieldvecs[i].row(0).norm() +  curr_framefieldvecs[i].row(1).norm() +  curr_framefieldvecs[i].row(2).norm();
             std::cout << mag << std::endl;
 
             // vf->setVectorColor({ dist(rng),dist(rng),dist(rng) });
@@ -491,13 +494,33 @@ void MintGUI::show_gl3_frame_field(const std::string &id, glm::mat4x4 trans)
 
 
 
-void MintGUI::set_frame_field()
+void MintGUI::set_frame_field(Frames_To_Show mode)
 {
-
     Eigen::MatrixXd frames;
     Eigen::MatrixXi assignments;
-    if (!CubeCover::readFrameField(path_fra, "", T, frames, assignments, true))
-        return ;
+    assignments.resize(0, 2 + 3);
+    if (mode == Frames_To_Show::constant)
+    {
+        int ntets = T.rows();
+        frames.resize(ntets*3, 3);
+        for (int i = 0; i<ntets; i++)
+        {
+            frames.row(3*i) = Eigen::Vector3d(1,0,0);
+            frames.row(3*i + 1) = Eigen::Vector3d(0,1,0);
+            frames.row(3*i + 2) = Eigen::Vector3d(0,0,1);
+        }
+    }
+    else if (sel_idx_fra > -1)
+    {
+        if (!CubeCover::readFrameField(path_fra, "", T, frames, assignments, true))
+            return ;
+    }
+    else
+    {
+        return;
+    }
+
+
 
     // CubeCover::TetMeshConnectivity mesh(T);
     
@@ -523,7 +546,49 @@ void MintGUI::set_frame_field()
     computePerVectorCurl(V, mesh, *field, framefieldvecs, splitCurls );
     makeEdgeSpanningTree(V, mesh, *field, 0, tree_traversal, tree_traversal_metadata);
     integrateFieldOnEdges(V, mesh, *field, framefieldvecs, tree_traversal, tree_traversal_metadata, 0, treeIntegratedVals);
+
+    if( mode == Frames_To_Show::tree_idx)
+    {
+        int ntree = tree_traversal.size();
+        Eigen::VectorXd blah; 
+        blah << 0,0,0,0,0,0;
+        treeIntegratedVals.row(tree_traversal[0](0)) = blah;
+        for( int i = 0; i < ntree; i++)
+        {
+            Eigen::VectorXd cur_vals; 
+            cur_vals << i,i,i,i,i,i;
+            treeIntegratedVals.row(tree_traversal[i](1)) = cur_vals;
+        }
+    }
+    else if( mode == Frames_To_Show::world_pos)
+    {
+        int ntree = tree_traversal.size();
+        Eigen::VectorXd blah; 
+        blah << 0,0,0,0,0,0;
+        treeIntegratedVals.row(tree_traversal[0](0)) = blah;
+        for( int i = 0; i < ntree; i++)
+        {
+            Eigen::VectorXd cur_vals; cur_vals.resize(6); 
+            cur_vals.head(3) = V.row(tree_traversal.at(i)[1]);
+            cur_vals.tail(3) = V.row(tree_traversal.at(i)[1]);
+            treeIntegratedVals.row(tree_traversal[i](1)) = cur_vals;
+        }
+
+                // sink_vals.head(3) = V.row(tree_traversal.at(i)[1]);
+        // sink_vals.tail(3) = V.row(tree_traversal.at(i)[1]);
+
+    }
+
+
     projectVertScalarsToTetFrames(V, mesh, *field, framefieldvecs,treeIntegratedVals, proj_framefieldvecs);
+
+    curr_framefieldvecs = framefieldvecs;
+    if ( mode == Frames_To_Show::reprojected_on_edges)
+    {
+        curr_framefieldvecs = proj_framefieldvecs;
+    }
+
+
 
 
     int nfaces = mesh.nFaces();
@@ -1069,7 +1134,9 @@ void MintGUI::gui_file_explorer_callback()
                         strncpy(path_fra, folder_contents_fra.at(i).c_str(), 512);
 
                         set_base_mesh();
-                        set_frame_field();
+                        if (frame_field_load_type != Frames_To_Show::reprojected_on_edges)
+                            frame_field_load_type = Frames_To_Show::loaded_frames;
+                        set_frame_field(frame_field_load_type);
                     }
 
                     // CubeCover::readMoments(path_constraints, M_curr, true);
@@ -1486,35 +1553,84 @@ void MintGUI::gui_main_control_panel_callback()
 			show_exploded_moments(moment_view_mode);
 		} 
 
+        ImGui::Text("Which Frame Type to Load");
+        if (ImGui::RadioButton("Const", frame_field_load_type == Frames_To_Show::constant))  
+        { 
+            frame_field_load_type = Frames_To_Show::constant;
+            set_frame_field(frame_field_load_type);
+			show_frame_field(frame_field_view_mode);
+
+
+            // polyscope::state::lengthScale = 5.;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("fra from file", frame_field_load_type == Frames_To_Show::loaded_frames))  
+        { 
+            frame_field_load_type = Frames_To_Show::loaded_frames;
+            set_frame_field(frame_field_load_type);
+			show_frame_field(frame_field_view_mode);
+
+
+            // polyscope::state::lengthScale = 5.;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("reprojected_on_edges", frame_field_load_type == Frames_To_Show::reprojected_on_edges))  
+        { 
+            frame_field_load_type = Frames_To_Show::reprojected_on_edges;
+            set_frame_field(frame_field_load_type);
+			show_frame_field(frame_field_view_mode);
+
+
+            // polyscope::state::lengthScale = 5.;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("tree_idx", frame_field_load_type == Frames_To_Show::tree_idx))  
+        { 
+            frame_field_load_type = Frames_To_Show::tree_idx;
+            set_frame_field(frame_field_load_type);
+			show_frame_field(frame_field_view_mode);
+
+
+            // polyscope::state::lengthScale = 5.;
+        } ImGui::SameLine();
+        if (ImGui::RadioButton("world_pos", frame_field_load_type == Frames_To_Show::world_pos))  
+        { 
+            frame_field_load_type = Frames_To_Show::world_pos;
+            set_frame_field(frame_field_load_type);
+			show_frame_field(frame_field_view_mode);
+
+
+            // polyscope::state::lengthScale = 5.;
+        } 
+
+
+
 
         ImGui::Text("Which frames to show");
-        if (ImGui::RadioButton("GL(3)", frame_field_view_mode == Frames_To_Show::frames))  
+        if (ImGui::RadioButton("GL(3)", frame_field_view_mode == Frames_Show_Mode::frames))  
         { 
-            frame_field_view_mode = Frames_To_Show::frames;
+            frame_field_view_mode = Frames_Show_Mode::frames;
 			show_frame_field(frame_field_view_mode);
 
 
             // polyscope::state::lengthScale = 5.;
         } ImGui::SameLine();
-        if (ImGui::RadioButton("split frames", frame_field_view_mode == Frames_To_Show::split_frames))  
+        if (ImGui::RadioButton("split frames", frame_field_view_mode == Frames_Show_Mode::split_frames))  
         { 
-            frame_field_view_mode = Frames_To_Show::split_frames;
+            frame_field_view_mode = Frames_Show_Mode::split_frames;
 			show_frame_field(frame_field_view_mode);
 
 
             // polyscope::state::lengthScale = 5.;
         } ImGui::SameLine();
-        if (ImGui::RadioButton("split_moments", frame_field_view_mode == Frames_To_Show::split_moments))  
+        if (ImGui::RadioButton("split_moments", frame_field_view_mode == Frames_Show_Mode::split_moments))  
         { 
-            frame_field_view_mode = Frames_To_Show::split_moments;
+            frame_field_view_mode = Frames_Show_Mode::split_moments;
 			show_frame_field(frame_field_view_mode);
 
 
             // polyscope::state::lengthScale = 5.;
         } ImGui::SameLine();
-        if (ImGui::RadioButton("split_difference", frame_field_view_mode == Frames_To_Show::split_difference))  
+        if (ImGui::RadioButton("split_difference", frame_field_view_mode == Frames_Show_Mode::split_difference))  
         { 
-            frame_field_view_mode = Frames_To_Show::split_difference;
+            frame_field_view_mode = Frames_Show_Mode::split_difference;
 			show_frame_field(frame_field_view_mode);
 
 
@@ -1601,7 +1717,7 @@ void MintGUI::gui_callback()
 
     ImGui::PushID("file_browser");
     
-    ImGui::SetNextWindowPos(ImVec2(polyscope::view::windowWidth -(600 ), 600),ImGuiCond_Once);
+    ImGui::SetNextWindowPos(ImVec2(polyscope::view::windowWidth -(600 ), 650),ImGuiCond_Once);
     ImGui::SetNextWindowSize(ImVec2(1000, polyscope::view::windowHeight/2));
 
     ImGui::Begin("File Browser", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);

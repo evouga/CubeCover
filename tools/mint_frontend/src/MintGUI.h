@@ -34,7 +34,8 @@ namespace MintFrontend
     enum Mint_Moment_Metric{ four, sec, four_plus_two, four_plus_two_tensor_two };
 
     enum Moments_To_Show{ second, fourth, both };
-    enum Frames_To_Show{ frames, split_frames, split_moments, split_difference };
+    enum Frames_To_Show{ constant, loaded_frames, reprojected_on_edges, tree_idx, world_pos };
+    enum Frames_Show_Mode{ frames, split_frames, split_moments, split_difference };
 
 
 
@@ -58,7 +59,7 @@ namespace MintFrontend
         void show_moments_all();
 
 
-        void show_frame_field(Frames_To_Show frame_field_view_mode);
+        void show_frame_field(Frames_Show_Mode frame_field_view_mode);
         
         void show_gl3_frame_field(const std::string &id, glm::mat4x4 trans);
         void show_gl3_split();
@@ -74,7 +75,7 @@ namespace MintFrontend
 
         void rescale_structure(polyscope::Structure* m);
         void set_base_mesh();
-        void set_frame_field();
+        void set_frame_field(Frames_To_Show mode);
 
 
         // void select_mesh();
@@ -142,6 +143,7 @@ namespace MintFrontend
         Eigen::MatrixXd treeIntegratedVals;
         float integrated_period;
         std::vector<Eigen::MatrixXd> proj_framefieldvecs;
+        std::vector<Eigen::MatrixXd> curr_framefieldvecs;
 
 
         // Curve network viz stuff 
@@ -159,7 +161,10 @@ namespace MintFrontend
         Mint_Moment_Metric metric_mode;
 
 		Moments_To_Show moment_view_mode;
-        Frames_To_Show frame_field_view_mode;
+        Frames_To_Show frame_field_load_type;
+        Frames_Show_Mode frame_field_view_mode;
+
+        bool showFrameField;
         bool showBoundary;
         bool showInteriorTets; 
         bool useSameColorRangeForAllMoments; 

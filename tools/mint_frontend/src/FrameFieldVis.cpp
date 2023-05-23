@@ -292,8 +292,8 @@ void integrateFieldOnEdges(const Eigen::MatrixXd& V,
         Eigen::VectorXd sink_vals = src_vals + edge_diffs;
 
         //debugging 
-        sink_vals.head(3) = V.row(tree_traversal.at(i)[1]);
-        sink_vals.tail(3) = V.row(tree_traversal.at(i)[1]);
+        // sink_vals.head(3) = V.row(tree_traversal.at(i)[1]);
+        // sink_vals.tail(3) = V.row(tree_traversal.at(i)[1]);
         // Eigen::VectorXd debug
 
         // // // std::cout << "period: " << period << "i " << i << "sink_vals " << sink_vals << std::endl;
