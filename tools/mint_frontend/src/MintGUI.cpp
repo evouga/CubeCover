@@ -103,7 +103,9 @@ static void HelpMarker(const char* desc)
         sel_idx_mom = -1;
         sel_idx_fra = -1;
 
-        integrated_period = 2*3.1415;
+        // integrated_period = 2*3.1415;
+
+        integrated_period = 5;
 
         cur_solver = Mint_Linear_Solver::exact;
         mint_mode = Mint_Integrability_Mode::free;
@@ -603,6 +605,30 @@ void MintGUI::set_frame_field(Frames_To_Show mode)
     if ( mode == Frames_To_Show::reprojected_on_edges)
     {
         curr_framefieldvecs = proj_framefieldvecs;
+    }
+
+
+    if ( integrated_period > 0 )
+    {
+        int nverts = treeIntegratedVals.rows();
+        for (int j = 0; j < 6; j++)
+        {
+            Eigen::VectorXd cur_col = treeIntegratedVals.col(j);
+            // double cur_min = cur_col.cwiseMin();
+            double cur_min = cur_col.minCoeff();
+            double cur_max = cur_col.maxCoeff();
+            cur_col = cur_col - Eigen::VectorXd::Constant(cur_col.rows(), 1, cur_min);
+            cur_col = cur_col.cwiseProduct( Eigen::VectorXd::Constant(cur_col.rows(), 1, integrated_period/cur_max) );
+
+            for(int entry = 0; entry < nverts; entry++)
+            {
+                cur_col[entry] = cur_col[entry] - std::floor(cur_col[entry]);
+            }
+            cur_col = cur_col.cwiseProduct( Eigen::VectorXd::Constant(cur_col.rows(), 1, cur_max/integrated_period) );
+            treeIntegratedVals.col(j) = cur_col;
+
+        }
+
     }
 
 

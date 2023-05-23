@@ -281,7 +281,8 @@ void integrateFieldOnEdges(const Eigen::MatrixXd& V,
 
         int cur_tet_id = tree_traversal_metadata.at(i)[0];
         Eigen::VectorXd src_vals = integratedVals.row(tree_traversal.at(i)[0]);
-        Eigen::VectorXd edge_diffs = src_vals*0;
+        // Eigen::VectorXd edge_diffs = src_vals*0;
+        Eigen::VectorXd edge_diffs(6);
         for (int j = 0; j < 2*vpf; j++)
         {
             Eigen::Vector3d f = frameVectors.at(j).row(cur_tet_id);
@@ -383,16 +384,24 @@ void projectVertScalarsToTetFrames(const Eigen::MatrixXd& V,
             b(1) = integratedVals(v2,j) - integratedVals(v0,j);
             b(2) = integratedVals(v3,j) - integratedVals(v0,j);
 
-            Eigen::Vector3d f = m.ldlt().solve(b);
+            // Eigen::Vector3d f = m.transpose().ldlt().solve(b);
+            // Eigen::Vector3d f = m.fullPivLu().solve(b);
+            Eigen::Vector3d f = m.colPivHouseholderQr().solve(b);
+
+
+
+            // std::cout << "residual norm" << (m*f - b).norm() << std::endl;
 
             if (std::isnan(f(0)) || std::isnan(f(1)) || std::isnan(f(2)))
             {
-                f = Eigen::Vector3d(.1,.1,.1);
+                assert(false);
+                // f = Eigen::Vector3d(.1,.1,.1);
             }
 
             if ( f.norm() > 10. )
             {
-                f = Eigen::Vector3d(.01,.01,.01);
+                assert(false);
+                // f = Eigen::Vector3d(.01,.01,.01);
             }
 
             // std::cout << f << std::endl;
