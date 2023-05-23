@@ -243,6 +243,9 @@ void makeEdgeSpanningTree(const Eigen::MatrixXd& V,
 
     }
 
+
+    std::cout << "this should be 1 " << *std::min_element( std::begin(vert_visited), std::end(vert_visited) ) << std::endl;
+
 }
 
 
