@@ -499,7 +499,13 @@ void MintGUI::set_frame_field(Frames_To_Show mode)
     Eigen::MatrixXd frames;
     Eigen::MatrixXi assignments;
     assignments.resize(0, 2 + 3);
-    if (mode == Frames_To_Show::constant)
+
+    if (sel_idx_fra > -1)
+    {
+        if (!CubeCover::readFrameField(path_fra, "", T, frames, assignments, true))
+            return ;
+    }
+    else // if (mode == Frames_To_Show::constant)
     {
         int ntets = T.rows();
         frames.resize(ntets*3, 3);
@@ -510,15 +516,10 @@ void MintGUI::set_frame_field(Frames_To_Show mode)
             frames.row(3*i + 2) = Eigen::Vector3d(0,0,1);
         }
     }
-    else if (sel_idx_fra > -1)
-    {
-        if (!CubeCover::readFrameField(path_fra, "", T, frames, assignments, true))
-            return ;
-    }
-    else
-    {
-        return;
-    }
+    // else
+    // {
+    //     return;
+    // }
 
 
 
@@ -551,29 +552,45 @@ void MintGUI::set_frame_field(Frames_To_Show mode)
     {
         int ntree = tree_traversal.size();
         Eigen::VectorXd blah; 
+        blah.resize(6);
         blah << 0,0,0,0,0,0;
         treeIntegratedVals.row(tree_traversal[0](0)) = blah;
         for( int i = 0; i < ntree; i++)
         {
             Eigen::VectorXd cur_vals; 
+            cur_vals.resize(6);
             cur_vals << i,i,i,i,i,i;
             treeIntegratedVals.row(tree_traversal[i](1)) = cur_vals;
         }
+
+        // for( int i = 0; i < treeIntegratedVals.rows(); i++)
+        // {
+        //     std::cout << treeIntegratedVals << std::endl;
+        // }
+
+        std::cout << "setting vert vals to: tree_idx" << std::endl;
     }
     else if( mode == Frames_To_Show::world_pos)
     {
         int ntree = tree_traversal.size();
         Eigen::VectorXd blah; 
+        blah.resize(6);
         blah << 0,0,0,0,0,0;
         treeIntegratedVals.row(tree_traversal[0](0)) = blah;
         for( int i = 0; i < ntree; i++)
         {
-            Eigen::VectorXd cur_vals; cur_vals.resize(6); 
+            Eigen::VectorXd cur_vals; 
+            cur_vals.resize(6); 
             cur_vals.head(3) = V.row(tree_traversal.at(i)[1]);
             cur_vals.tail(3) = V.row(tree_traversal.at(i)[1]);
             treeIntegratedVals.row(tree_traversal[i](1)) = cur_vals;
         }
 
+        // for( int i = 0; i < treeIntegratedVals.rows(); i++)
+        // {
+        //     std::cout << treeIntegratedVals << std::endl;
+        // }
+        std::cout << "setting vert vals to: world_pos" << std::endl;
                 // sink_vals.head(3) = V.row(tree_traversal.at(i)[1]);
         // sink_vals.tail(3) = V.row(tree_traversal.at(i)[1]);
 

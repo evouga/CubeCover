@@ -223,8 +223,8 @@ void makeEdgeSpanningTree(const Eigen::MatrixXd& V,
                 
                 if (v1_val > 0)
                 {
-                    int eid0 = mesh.edgeVertex(cur_edge_id,1);
-                    int eid1 = mesh.edgeVertex(cur_edge_id,0);
+                    eid0 = mesh.edgeVertex(cur_edge_id,1);
+                    eid1 = mesh.edgeVertex(cur_edge_id,0);
                     orientation = -1;
                 }
                     
@@ -313,7 +313,7 @@ void integrateFieldOnEdges(const Eigen::MatrixXd& V,
 
         // }
 
-        std::cout << sink_vals << std::endl;
+        // std::cout << sink_vals << std::endl;
         if (std::isnan(sink_vals.sum()) )
         {
             std::cout << "i " << i << " sink_vals " << sink_vals << std::endl << " period " << period << std::endl 
