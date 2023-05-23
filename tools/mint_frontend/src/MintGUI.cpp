@@ -331,7 +331,7 @@ void MintGUI::show_gl3_split()
             glm::vec3 dotcolor(0.1, 0.1, 0.1);
             tetc->setPointColor(dotcolor);
             tetc->setPointRadius(0.001);
-            int vpf = framefieldvecs.size();
+            int vpf = curr_framefieldvecs.size();
 
             tetc->setTransform(tet_mesh->getTransform());
             // rescale_structure(tetc);
@@ -339,8 +339,8 @@ void MintGUI::show_gl3_split()
 
             std::stringstream ss;
             ss << "Frame Vector " << i;
-            auto *vf = tetc->addVectorQuantity(ss.str(), framefieldvecs[i]);
-            double mag = framefieldvecs[i].row(0).norm() +  framefieldvecs[i].row(1).norm() +  framefieldvecs[i].row(2).norm();
+            auto *vf = tetc->addVectorQuantity(ss.str(), curr_framefieldvecs[i]);
+            double mag = curr_framefieldvecs[i].row(0).norm() +  curr_framefieldvecs[i].row(1).norm() +  framefieldvecs[i].row(2).norm();
             std::cout << mag << std::endl;
 
             // vf->setVectorColor({ dist(rng),dist(rng),dist(rng) });
