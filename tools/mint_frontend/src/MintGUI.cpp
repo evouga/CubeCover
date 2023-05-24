@@ -617,14 +617,15 @@ void MintGUI::set_frame_field(Frames_To_Show mode)
             // double cur_min = cur_col.cwiseMin();
             double cur_min = cur_col.minCoeff();
             double cur_max = cur_col.maxCoeff();
+            double cur_range = cur_max - cur_min;
             cur_col = cur_col - Eigen::VectorXd::Constant(cur_col.rows(), 1, cur_min);
-            cur_col = cur_col.cwiseProduct( Eigen::VectorXd::Constant(cur_col.rows(), 1, integrated_period/cur_max) );
+            cur_col = cur_col.cwiseProduct( Eigen::VectorXd::Constant(cur_col.rows(), 1, integrated_period/cur_range) );
 
             for(int entry = 0; entry < nverts; entry++)
             {
                 cur_col[entry] = cur_col[entry] - std::floor(cur_col[entry]);
             }
-            cur_col = cur_col.cwiseProduct( Eigen::VectorXd::Constant(cur_col.rows(), 1, cur_max/integrated_period) );
+            cur_col = cur_col.cwiseProduct( Eigen::VectorXd::Constant(cur_col.rows(), 1, cur_range/integrated_period) );
             treeIntegratedVals.col(j) = cur_col;
 
         }
