@@ -1219,6 +1219,8 @@ void MintGUI::gui_file_explorer_callback()
                         sel_idx_mom = i;
                         path_constraints = new char[512];
                         strncpy(path_constraints, folder_contents.at(i).c_str(), 512);
+
+                        // std::cout << path_constraints << std::endl;
                         CubeCover::readMoments(path_constraints, M_curr, true);
                     }
                     // std::cout << path_constraints << std::endl;

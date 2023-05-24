@@ -413,3 +413,68 @@ void projectVertScalarsToTetFrames(const Eigen::MatrixXd& V,
 
     // std::cout << ret_frames[1] << std::endl;
 }
+
+
+void squaredPerTetCurl(const Eigen::MatrixXd& V,
+    const CubeCover::TetMeshConnectivity& mesh,
+    const CubeCover::FrameField& field,
+    const std::vector<Eigen::MatrixXd>& frameVectors,   
+    Eigen::MatrixXd& tetframeCurls
+)
+{
+    int ntets = mesh.nTets();
+    int nverts = V.rows(); 
+    int nfaces = mesh.nFaces();
+    // int vpf = field.vectorsPerFrame();
+    int inner_iters = frameVectors.size();
+
+    // std::vector<Eigen::MatrixXd>& ret_frames
+    // ret_frames.resize(inner_iters);
+    // // ret_frames.setZero();
+    // for (int i = 0; i < inner_iters; i++)
+    // {
+    //     ret_frames[i].resize(ntets, 3);
+    // }
+
+    tetframeCurls.resize(ntets,inner_iters);
+    tetframeCurls.setZero();
+
+    for(int i = 0; i < ntets; i++)
+    {
+        for(int fidx = 0; fidx < 4; fidx++)
+        {
+            int cur_face_id = mesh.tetFace(i, fidx);
+            int t0 = mesh.faceTet(cur_face_id, 0);
+            int t1 = mesh.faceTet(cur_face_id, 1);
+
+            int v0 = mesh.faceVertex(i, 0);
+            int v1 = mesh.faceVertex(i, 1);
+            int v2 = mesh.faceVertex(i, 2);
+
+            Eigen::Vector3d e1 = V.row(v1) - V.row(v0);
+            Eigen::Vector3d e2 = V.row(v2) - V.row(v0);
+
+            if (field.faceAssignment(cur_face_id).isIdentity())
+            {
+                Eigen::VectorXd percover_facet_curl;
+                percover_facet_curl.resize(inner_iters);
+                for (int cover = 0; cover < inner_iters; cover++)
+                {
+                    Eigen::Vector3d f0 = frameVectors[cover].row(t0);
+                    Eigen::Vector3d f1 = frameVectors[cover].row(t1);
+                    percover_facet_curl(cover) = pow((f0.dot(e1))-(f0.dot(e1)),2) + 
+                                                 pow((f0.dot(e2))-(f0.dot(e2)),2); 
+                }
+
+                tetframeCurls.row(t0) = tetframeCurls.row(t0) + percover_facet_curl;
+                tetframeCurls.row(t1) = tetframeCurls.row(t1) + percover_facet_curl;
+
+            }
+
+        }
+
+    }
+
+}
+
+            // if (opp_tet_id > -1 && field.faceAssignment(cur_face_id).isIdentity())
