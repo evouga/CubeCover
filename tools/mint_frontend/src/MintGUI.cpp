@@ -748,7 +748,7 @@ void MintGUI::show_moments_all()
  
 
                 cur_mesh->translate(shift);
-                Eigen::VectorXd tmp_mvals = M_curr.block(0,cur_id,mesh.nTets(),cur_id+1);
+                Eigen::VectorXd tmp_mvals = M_curr.block(0,cur_id,mesh.nTets(),1);
                 cur_mesh->addCellScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
                 if (useSameColorRangeForAllMoments)
                 {
@@ -768,7 +768,7 @@ void MintGUI::show_moments_all()
                 surf_mesh->translate(shift);
 
                 // std::cout << M_curr.rows()-mesh.nTets() << " diff " << M_curr.rows()-mesh.nTets() - bdryF.rows() << std::endl;
-                Eigen::VectorXd tmp_mvals = M_curr.block(mesh.nTets(),cur_id,bdryF.rows(),cur_id+1);
+                Eigen::VectorXd tmp_mvals = M_curr.block(mesh.nTets(),cur_id,bdryF.rows(),1);
                 surf_mesh->addFaceScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
                 if (useSameColorRangeForAllMoments)
                 {
@@ -825,7 +825,9 @@ void MintGUI::show_moments_4th()
                 cur_mesh->setEdgeWidth(0.5)->setTransparency(transparency_tets);
                 rescale_structure(cur_mesh);
                 cur_mesh->translate(shift);
-                Eigen::VectorXd tmp_mvals = M_curr.block(0,cur_id,mesh.nTets(),cur_id+1);
+                std::cout << M_curr.size() << std::endl;
+                std::cout << " " << M_curr.rows() << " " << M_curr.cols() << " " << mesh.nTets() << std::endl;
+                Eigen::VectorXd tmp_mvals = M_curr.block(0,cur_id,mesh.nTets(),1);
                 cur_mesh->addCellScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
                 if (useSameColorRangeForAllMoments)
                 {
@@ -845,7 +847,7 @@ void MintGUI::show_moments_4th()
                 surf_mesh->translate(shift);
 
                 // std::cout << M_curr.rows()-mesh.nTets() << " diff " << M_curr.rows()-mesh.nTets() - bdryF.rows() << std::endl;
-                Eigen::VectorXd tmp_mvals = M_curr.block(mesh.nTets(),cur_id,bdryF.rows(),cur_id+1);
+                Eigen::VectorXd tmp_mvals = M_curr.block(mesh.nTets(),cur_id,bdryF.rows(),1);
                 surf_mesh->addFaceScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
                 if (useSameColorRangeForAllMoments)
                 {
@@ -901,7 +903,7 @@ void MintGUI::show_moments_2nd()
 				cur_mesh->setEdgeWidth(0.5)->setTransparency(transparency_tets);
 				rescale_structure(cur_mesh);
 				cur_mesh->translate(shift);
-				Eigen::VectorXd tmp_mvals = M_curr.block(0, cur_id, mesh.nTets(), cur_id + 1);
+				Eigen::VectorXd tmp_mvals = M_curr.block(0, cur_id, mesh.nTets(), 1);
                 cur_mesh->addCellScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
                 if (useSameColorRangeForAllMoments)
                 {
@@ -922,7 +924,7 @@ void MintGUI::show_moments_2nd()
 				surf_mesh->translate(shift);
 
 				// std::cout << M_curr.rows()-mesh.nTets() << " diff " << M_curr.rows()-mesh.nTets() - bdryF.rows() << std::endl;
-				Eigen::VectorXd tmp_mvals = M_curr.block(mesh.nTets(), cur_id, bdryF.rows(), cur_id + 1);
+				Eigen::VectorXd tmp_mvals = M_curr.block(mesh.nTets(), cur_id, bdryF.rows(), 1);
 				surf_mesh->addFaceScalarQuantity("cur-moment", tmp_mvals)->setEnabled(true);
                 if (useSameColorRangeForAllMoments)
                 {
