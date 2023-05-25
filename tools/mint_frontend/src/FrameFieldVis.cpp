@@ -93,9 +93,9 @@ void computePerVectorCurl(const Eigen::MatrixXd& V,
                 Eigen::Vector3d vf0 = frameVectors[j].row(tid0);
                 Eigen::Vector3d vf1 = frameVectors[j].row(tid1);
 
-                double faceCurl = (vf0.dot(b0) - vf1.dot(b0)) + (vf0.dot(b1) - vf1.dot(b1));
-                splitCurl(tid0,j) += faceCurl*faceCurl;
-                splitCurl(tid1,j) += faceCurl*faceCurl;
+                double faceCurl = pow((vf0.dot(b0) - vf1.dot(b0)),2) + pow((vf0.dot(b1) - vf1.dot(b1)),2);
+                splitCurl(tid0,j) += faceCurl;
+                splitCurl(tid1,j) += faceCurl;
 
             }  
         }

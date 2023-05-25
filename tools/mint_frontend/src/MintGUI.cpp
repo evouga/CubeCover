@@ -323,7 +323,7 @@ void MintGUI::show_gl3_split()
             tet_mesh->translate(shift);
 
             
-            polyscope::getVolumeMesh("tet_mesh_"+std::to_string(i))->addVertexScalarQuantity("integrated", treeIntegratedVals.col(i))->setEnabled(true);
+            polyscope::getVolumeMesh("tet_mesh_"+std::to_string(i))->addVertexScalarQuantity("integrated", treeIntegratedVals.col(i))->setColorMap("phase")->setEnabled(true);
             polyscope::getVolumeMesh("tet_mesh_"+std::to_string(i))->addCellScalarQuantity("curls", splitCurls.col(i));
 
 
