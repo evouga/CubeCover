@@ -186,7 +186,7 @@ void makeEdgeSpanningTree(const Eigen::MatrixXd& V,
             if (opp_tet_id > -1 && field.faceAssignment(cur_face_id).isIdentity())
             {
                 // If not in queue add it.
-                std::cout << "got here " << std::endl;
+                // std::cout << "got here " << std::endl;
 
                 if (tet_added_to_queue[opp_tet_id] == 0)
                 {
@@ -244,7 +244,7 @@ void makeEdgeSpanningTree(const Eigen::MatrixXd& V,
     }
 
 
-    std::cout << "this should be 1 " << *std::min_element( std::begin(vert_visited), std::end(vert_visited) ) << std::endl;
+    // std::cout << "this should be 1 " << *std::min_element( std::begin(vert_visited), std::end(vert_visited) ) << std::endl;
 
 }
 
@@ -394,14 +394,15 @@ void projectVertScalarsToTetFrames(const Eigen::MatrixXd& V,
 
             if (std::isnan(f(0)) || std::isnan(f(1)) || std::isnan(f(2)))
             {
-                assert(false);
-                // f = Eigen::Vector3d(.1,.1,.1);
+                // assert(false);
+                f = Eigen::Vector3d(.0001,.0001,.0001);
             }
 
-            if ( f.norm() > 10000. )
+            if ( f.norm() > 10. )
             {
-                assert(false);
-                // f = Eigen::Vector3d(.01,.01,.01);
+                // assert(false);
+                
+                f = Eigen::Vector3d(.0002,.0002,.0002);
             }
 
             // std::cout << f << std::endl;

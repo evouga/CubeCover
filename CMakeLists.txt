@@ -13,6 +13,7 @@ set(BUILD_ISOLINE_VIEWER ON CACHE BOOL "Build Isoline Viewer")
 set(BUILD_BINARIES ON CACHE BOOL "Build Command-line Binaries")
 set(BUILD_VIZ_TOOLS OFF CACHE BOOL "Build Stuff for Volume Rendering")
 set(BUILD_MINT_FRONTEND ON CACHE BOOL "Build the mint frame field solver front end.")
+set(BUILD_MINT_UTILS ON CACHE BOOL "C++ utils used by some parts of mint, should be ported to mex")
 
 set(USE_GUROBI ON CACHE BOOL "Use Gurobi for solving MIPs")
 set(USE_COMISO OFF CACHE BOOL "Use Comiso for solving MIPs")
@@ -85,6 +86,12 @@ endif()
 if (BUILD_MINT_FRONTEND)
   add_subdirectory(tools/mint_frontend)
 endif()
+
+if (BUILD_MINT_UTILS)
+  add_subdirectory(tools/proj_to_int_frames)
+endif()
+
+
 
 if(BUILD_BINARIES)
   add_subdirectory(tools/seamless)
