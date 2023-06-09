@@ -22,15 +22,16 @@ int main(int argc, char *argv[])
 
 
 	// todo add default out location
-    if (argc != 4)
+    if (argc != 5)
     {
-        std::cerr << "Usage: proj_to_int_frames [.mesh] [.fra in filepath] [.fra out filepath]" << std::endl;
+        std::cerr << "Usage: proj_to_int_frames [int start idx] [.mesh] [.fra in filepath] [.fra out filepath]" << std::endl;
         return -1;
     }
 
-    std::string path_mesh = argv[1];
-    std::string path_fra = argv[2];
-    std::string path_outdir = argv[3];
+    int start_node = std::stoi(argv[1]);
+    std::string path_mesh = argv[2];
+    std::string path_fra = argv[3];
+    std::string path_outdir = argv[4];
 
     Eigen::MatrixXd V;
     Eigen::MatrixXi T;
@@ -81,7 +82,7 @@ int main(int argc, char *argv[])
 
     buildFrameVectors(V, mesh, *field, 1.0, centroids, framefieldvecs);
     computePerVectorCurl(V, mesh, *field, framefieldvecs, splitCurls );
-    makeEdgeSpanningTree(V, mesh, *field, 0, tree_traversal, tree_traversal_metadata);
+    makeEdgeSpanningTree(V, mesh, *field, start_node % mesh.nTets(), tree_traversal, tree_traversal_metadata);
     integrateFieldOnEdges(V, mesh, *field, framefieldvecs, tree_traversal, tree_traversal_metadata, 0, treeIntegratedVals);
     projectVertScalarsToTetFrames(V, mesh, *field, framefieldvecs,treeIntegratedVals, proj_framefieldvecs);
 

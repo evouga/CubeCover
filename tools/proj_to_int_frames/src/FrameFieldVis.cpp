@@ -398,7 +398,7 @@ void projectVertScalarsToTetFrames(const Eigen::MatrixXd& V,
                 f = Eigen::Vector3d(.0001,.0001,.0001);
             }
 
-            if ( f.norm() > 10. )
+            if ( f.norm() > 10000000. )
             {
                 // assert(false);
                 
