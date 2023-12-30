@@ -9,6 +9,8 @@ namespace CubeCover {
 
     void isosurfaceSoup(const Eigen::MatrixXd& V, const TetMeshConnectivity& mesh, Eigen::MatrixXd& phivals, Eigen::MatrixXd& isoV, Eigen::MatrixXi& isoF);
 
+    void isosurfaceSoupForSingleIsoVal(const Eigen::MatrixXd& V, const TetMeshConnectivity& mesh, Eigen::MatrixXd& phival, double isoval, Eigen::MatrixXd& isoV, Eigen::MatrixXi& isoF);
+
 };
 
 #endif

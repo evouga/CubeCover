@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/_deps/libigl-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/_deps/libigl-src/external/CoMISo" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/_deps/libigl-src/external/eigen" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/cmake-build-relwithdebinfo/_deps/libigl-src" vcs="Git" />
+  </component>
+</project>
