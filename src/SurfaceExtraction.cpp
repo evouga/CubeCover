@@ -1,6 +1,7 @@
 #include "SurfaceExtraction.h"
 #include "TetMeshConnectivity.h"
 #include <iostream>
+#include <Eigen/Dense>
 
 namespace CubeCover {
 
@@ -149,6 +150,7 @@ namespace CubeCover {
                     Eigen::Vector3d pt;
                 };
                 std::vector<Crossing> crossings;
+                Eigen::RowVector3d pos_pt;
                 for (int idx1 = 0; idx1 < 4; idx1++) {
                     for (int idx2 = idx1 + 1; idx2 < 4; idx2++) {
                         int vidx1 = mesh.tetVertex(tet, idx1);
@@ -165,6 +167,7 @@ namespace CubeCover {
                             Eigen::Vector3d pos =
                                 alpha * V.row(vidx1) + beta * V.row(vidx2);
                             crossings.push_back({idx1, idx2, pos});
+                            pos_pt = V.row(vidx2);
                         }
                     }
                 }
@@ -173,8 +176,16 @@ namespace CubeCover {
 
                 if (ncrossings == 3) {
                     Eigen::Matrix3d tri;
+                    Eigen::RowVector3d centroid(0, 0, 0);
                     for (int i = 0; i < 3; i++) {
                         tri.row(i) = crossings[i].pt.transpose();
+                        centroid += crossings[i].pt / 3;
+                    }
+                    Eigen::RowVector3d normal = (tri.row(1) - tri.row(0)).cross(tri.row(2) - tri.row(0));
+                    if (normal.dot(pos_pt - centroid) < 0) {
+                        Eigen::RowVector3d r0 = tri.row(1);
+                        tri.row(1) = tri.row(0);
+                        tri.row(0) = r0;
                     }
                     triangles.push_back(tri);
                 } else if (ncrossings == 4) {
@@ -202,9 +213,20 @@ namespace CubeCover {
                     for (int offset = 0; offset < 4; offset++) {
                         Eigen::Matrix3d tri;
                         tri.row(0) = centroid.transpose();
+
                         tri.row(1) = crossings[offset].pt.transpose();
                         int op1 = (offset + 1) % 4;
                         tri.row(2) = crossings[op1].pt.transpose();
+
+                        Eigen::RowVector3d face_center = (tri.row(0) + tri.row(1) + tri.row(2)) / 3;
+                        Eigen::RowVector3d face_normal = (tri.row(1) - tri.row(0)).cross(tri.row(2) - tri.row(0));
+
+                        if (face_normal.dot(pos_pt - face_center) < 0) {
+                            Eigen::RowVector3d r0 = tri.row(1);
+                            tri.row(1) = tri.row(0);
+                            tri.row(0) = r0;
+                        }
+                        
                         triangles.push_back(tri);
                     }
                 }

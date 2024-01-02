@@ -39,12 +39,16 @@ int main(int argc, char *argv[])
     int min_val = int(values.minCoeff());
     int max_val = int(values.maxCoeff());
 
-    for(int iso_val = min_val; iso_val < max_val; iso_val += (max_val - min_val) / 10) {
-        CubeCover::isosurfaceSoupForSingleIsoVal(V, mesh, values, iso_val, isoV, isoF);
-        auto *psCurves = polyscope::registerSurfaceMesh("Iso surface " + std::to_string(iso_val), isoV, isoF);
-    }
+    //for(int iso_val = min_val; iso_val < max_val; iso_val += (max_val - min_val) / 10) {
+    //    CubeCover::isosurfaceSoupForSingleIsoVal(V, mesh, values, iso_val, isoV, isoF);
+    //    auto *psCurves = polyscope::registerSurfaceMesh("Iso surface " + std::to_string(iso_val), isoV, isoF);
+    //}
 
+    CubeCover::isosurfaceSoupForSingleIsoVal(V, mesh, values, 4, isoV, isoF);
+    auto* psCurves = polyscope::registerSurfaceMesh("Iso surface " + std::to_string(4), isoV, isoF);
 
+    CubeCover::isosurfaceSoup(V, mesh, values, isoV, isoF);
+    psCurves = polyscope::registerSurfaceMesh("Whole Iso surfaces", isoV, isoF);
     
     // make a mesh out of all of the boundary faces
     int nbdry = 0;
