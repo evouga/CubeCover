@@ -584,7 +584,7 @@ namespace CubeCover {
         Eigen::VectorXd result;
         std::vector<int> intdofs;
         
-        if (opt.parameterizationType == CubeCoverOptions::ParameterizationType::PT_SEAMLESS)
+//        if (opt.parameterizationType == CubeCoverOptions::ParameterizationType::PT_SEAMLESS)
         {            
             for (int i = 0; i < jumpdofs; i++)
             {

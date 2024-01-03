@@ -70,63 +70,6 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
                     int nedgepts = 0;
                     int nfacepts = 0;
 
-                    // vertex case
-                    for (int vert = 0; vert < 4; vert++)
-                    {
-                        double s1val = values(4 * i + vert, sample1);
-                        double s2val = values(4 * i + vert, sample2);
-                        if (s1val == double(val1) && s2val == double(val2))
-                        {
-                            Eigen::Vector4d pt(0, 0, 0, 0);
-                            pt[vert] = 1.0;
-                            pts.push_back(pt);
-                            nvertpts++;
-                        }
-                    }
-
-                    // edge case
-                    for (int vert1 = 0; vert1 < 4; vert1++)
-                    {
-                        for (int vert2 = vert1 + 1; vert2 < 4; vert2++)
-                        {
-                            double s11val = values(4 * i + vert1, sample1);
-                            double s12val = values(4 * i + vert2, sample1);
-                            double s21val = values(4 * i + vert1, sample2);
-                            double s22val = values(4 * i + vert2, sample2);
-                            if (s11val == double(val1) && s12val == double(val1))
-                            {
-                                // whole edge intersect the isosurface
-                                if (s21val != s22val)
-                                {
-                                    // equality is handled in the vertex case
-                                    double bary = (double(val2) - s21val) / (s22val - s21val);
-                                    if (bary > 0.0 && bary < 1.0)
-                                    {                                        
-                                        Eigen::Vector4d pt(0, 0, 0, 0);
-                                        pt[vert1] = 1.0 - bary;
-                                        pt[vert2] = bary;
-                                        pts.push_back(pt);
-                                        nedgepts++;
-                                    }
-                                }
-                                else
-                                {
-                                    double bary1 = (double(val1) - s11val) / (s12val - s11val);
-                                    double bary2 = (double(val2) - s21val) / (s22val - s21val);
-                                    if (bary1 > 0.0 && bary1 < 1.0 && bary1 == bary2)
-                                    {
-                                        Eigen::Vector4d pt(0, 0, 0, 0);
-                                        pt[vert1] = 1.0 - bary1;
-                                        pt[vert2] = bary1;
-                                        pts.push_back(pt);
-                                        nedgepts++;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-
                     // face case
                     for (int vert1 = 0; vert1 < 4; vert1++)
                     {
@@ -163,7 +106,7 @@ void extractIsolines(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectiv
 
                                 Eigen::Vector2d rhs(double(val1) - s11val, double(val2) - s21val);
                                 Eigen::Vector2d barys = M.inverse() * rhs;
-                                if (barys[0] >= 0 && barys[1] >= 0 && barys[0] + barys[1] <= 1.0)
+                                if (barys[0] >= -clamptol && barys[1] >= -clamptol && barys[0] + barys[1] <= 1.0 + clamptol)
                                 {
                                     Eigen::Vector4d pt(0, 0, 0, 0);
                                     pt[vert1] = 1.0 - barys[0] - barys[1];
