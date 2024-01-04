@@ -26,6 +26,17 @@ namespace CubeCover
         Eigen::MatrixXi& assignments,
         bool verbose = false);
 
+
+    bool readFrameField_v1(const std::string& fraFilename, const std::string& permFilename, const Eigen::MatrixXi& T,
+        Eigen::MatrixXd& frames,
+        Eigen::MatrixXi& assignments,
+        bool verbose = false);
+
+    bool readFrameField_v2(const std::string& fraFilename, const std::string& permFilename, const Eigen::MatrixXi& T,
+        Eigen::MatrixXd& frames,
+        Eigen::MatrixXi& assignments,
+        bool verbose = false); 
+
 };
 
 #endif
