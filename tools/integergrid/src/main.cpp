@@ -43,12 +43,40 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    int vpe = frames.rows() / T.rows();
+    if(vpe != 3) {
+        Eigen::MatrixXd ext_frames(3 * T.rows(), 3);
+
+        for(int i = 0; i < T.rows(); i++) {
+          if(vpe == 0) {
+            ext_frames.row(3 * i + 0) << 1, 0, 0;
+            ext_frames.row(3 * i + 1) << 0, 1, 0;
+            ext_frames.row(3 * i + 2) << 0, 0, 1;
+          } else if (vpe == 1) {
+            ext_frames.row(3 * i + 0) << frames.row(vpe * i + 0);
+            ext_frames.row(3 * i + 1) << 0, 1, 0;
+            ext_frames.row(3 * i + 2) << 0, 0, 1;
+          } else if (vpe == 2) {
+            ext_frames.row(3 * i + 0) << frames.row(vpe * i + 0);
+            ext_frames.row(3 * i + 1) << frames.row(vpe * i + 1);
+            ext_frames.row(3 * i + 2) << 0, 0, 1;
+          } else {
+            for(int j = 0; j < 3; j++) {
+              ext_frames.row(3 * i + j) = frames.row(vpe * i + j);
+            }
+          }
+        }
+
+        frames = std::move(ext_frames);
+    }
+
     CubeCover::CubeCoverOptions opt;
     opt.parameterizationType = CubeCover::CubeCoverOptions::ParameterizationType::PT_INTEGERGRID;
 //    opt.parameterizationType = CubeCover::CubeCoverOptions::ParameterizationType::PT_SEAMLESS;
     opt.assignmentHandling = (argc == 5 ? CubeCover::CubeCoverOptions::AssignmentHandling::AH_USEPROVIDED : CubeCover::CubeCoverOptions::AssignmentHandling::AH_RECOMPUTE);
     opt.boundaryConditions = CubeCover::CubeCoverOptions::BoundaryConditions::BC_FORCEINTEGER;
 
+//    opt.boundaryConditions = CubeCover::CubeCoverOptions::BoundaryConditions::BC_FREE;
     opt.solver = CubeCover::CubeCoverOptions::MIPSolver::MS_COMISO;
 
     // set to something non-zero if you want curl-correction. 1.0 == 100% change in the input frames allowed.

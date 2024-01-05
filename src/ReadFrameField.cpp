@@ -185,15 +185,7 @@ namespace CubeCover
             }
 
             char* filename = new char[5];
-            inFile.read(reinterpret_cast<char*>(&filename), sizeof("FRA 2") ); 
-
-          // check that it does start with FRA 2
-            // if (filename != "FRA 2")
-            // {
-            //     if (verbose)
-            //         std::cerr << "Expected: FRA 2, read: " << filename << std::endl;
-            //     return false;
-            // }
+            inFile.read(reinterpret_cast<char*>(&filename), sizeof("FRA 2") );
 
 
             // Read matrix rows and cols
@@ -206,7 +198,16 @@ namespace CubeCover
             frames.resize(rows, cols);
             inFile.read(reinterpret_cast<char*>(frames.data()), rows * cols * sizeof(double));
             inFile.close();
-            
+
+            vpe = vpe != cols / 3 ? cols / 3 : vpe;
+
+            Eigen::MatrixXd cur_frames(rows * vpe, 3);
+            for(int i = 0; i < rows; i++) {
+                for(int j = 0; j < vpe; j++) {
+                    cur_frames.row(vpe * i + j) = frames.row(i).segment<3>(3 * j);
+                }
+            }
+            frames = std::move(cur_frames);
             return true;
         } catch (const std::exception& e) {
             std::cerr << "Error: Unable to deserialize matrix: " << e.what() << std::endl;

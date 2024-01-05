@@ -155,14 +155,6 @@ int main(int argc, char *argv[])
     ///////////////////////    ///////////////////////
     /////////     Show Streamlines       /////////////
     ///////////////////////     //////////////////////
-    // std::vector<Streamline> traces;
-    // int max_iter_per_trace = 100;
-    // Eigen::VectorXi init_tet_ids;
-    // init_tet_ids.resize(10);
-    // init_tet_ids << 1, 2, 3, 4, 5, 6, 7, 8, 9, 10;
-
-    // traceStreamlines(V_mesh, mesh, *field, init_tet_ids, max_iter_per_trace, traces);
-
     Eigen::VectorXd tet_colors;
     tet_colors.resize(T_mesh.rows());
     tet_colors.setZero();
@@ -176,7 +168,7 @@ int main(int argc, char *argv[])
     {
  //       streamline_tets.clear();
         int nsteps = traces.at(tid).tetIds.size();
-        std::cout << "traceId: " << tid << "nsteps: " << nsteps << std::endl;
+//        std::cout << "traceId: " << tid << "nsteps: " << nsteps << std::endl;
         for (int i = 0; i < nsteps; i++ )
         {
             auto cur_trace = traces.at(tid);
@@ -240,16 +232,6 @@ int main(int argc, char *argv[])
                     cur_line_edges.push_back(Eigen::Vector2d(iter+i, iter+i+1) );                  
                 }
                 iter = iter + cur_len;
-                // std::cout << "traceId: " << tid << "nsteps: " << nsteps << std::endl;
-                // for (int i = 0; i < nsteps-1; i++ )
-                // {
-                //     auto cur_trace = traces.at(tid);
-                //     int cur_tet_id = cur_trace.tetIds.at(i);
-                //     streamline_tets.push_back(T_mesh.row(cur_tet_id));
-                //     // std::cout << "cur_tet_id: " << cur_tet_id << std::endl;
-                //     tet_colors(cur_tet_id) = 1.;
-                // }
-
 
             }
 
@@ -265,40 +247,7 @@ int main(int argc, char *argv[])
     }
 
 
-
- //    for (int tid = 0; tid < ntraces; tid++)
- //    {
- //        int fam_id = tid % 6;
- //        cur_iter = iter_streamline(fam_id);
- // //       streamline_tets.clear();
- //        int nsteps = traces.at(tid).points.size();
- //        std::vector<Eigen::Vector2d> cur_edge;
- //        for (int i = 0; i < nsteps-1; i++ )
- //        {
- //            cur_edge.push_back(Eigen::Vector2d(i, i+1) );
- //        }
- //        std::cout << "traceId: " << tid << "nsteps: " << nsteps << std::endl;
- //        for (int i = 0; i < nsteps-1; i++ )
- //        {
- //            auto cur_trace = traces.at(tid);
- //            int cur_tet_id = cur_trace.tetIds.at(i);
- //            streamline_tets.push_back(T_mesh.row(cur_tet_id));
- //            // std::cout << "cur_tet_id: " << cur_tet_id << std::endl;
- //            tet_colors(cur_tet_id) = 1.;
- //        }
-
- //        auto *single_streamline = polyscope::registerCurveNetwork("streamline" + std::to_string(tid), traces.at(tid).points, cur_edge);
- //        single_streamline->setTransparency(.7);
- //        single_streamline->setRadius(0.005);
-        
- //    }
-
-    // auto *single_streamline = polyscope::registerCurveNetwork("streamline" + std::to_string(tid), traces.at(tid).points, cur_edge);
-    // single_streamline->setTransparency(.7);
-    // psCurves2->setRadius(0.001);
-
-
-    std::cout << "ntraces: " << ntraces << "tet_colors " << ntets_mesh << std::endl;
+//    std::cout << "ntraces: " << ntraces << "tet_colors " << ntets_mesh << std::endl;
 
 
 
@@ -321,54 +270,16 @@ int main(int argc, char *argv[])
 
     blah_mesh->setTransparency(0.2);
 
-    // for (int i = 0; i < ntets_mesh; i++)
-    // {
+    for(int i = 0; i < 3; i++) {
+        Eigen::MatrixXd cell_vector(T_mesh.rows(), 3);
+        for(int tid = 0; tid < T_mesh.rows(); tid++) {
+            cell_vector.row(tid) = field->tetFrame(tid).row(i);
+        }
 
-    // }
+        blah_mesh->addCellVectorQuantity("frame " + std::to_string(i), cell_vector);
+    }
 
-
-    // auto *streamline_tets_mesh = polyscope::registerTetMesh("frame_mesh", V_mesh, streamline_tets);
-    // // auto volScalarQ = streamline_tets_mesh->addCellScalarQuantity("active_tets", tet_colors);
-    // // volScalarQ->setEnabled(true);
-    // // volScalarQ->setMapRange({0,1.});
-    // // volScalarQ->setColorMap("blues");
-    // streamline_tets_mesh->setTransparency(.5);
-
-
-
-
-    ///////////////////////
-
-
-    
 
     // visualize!
     polyscope::show();
 }
-
-
-
- //    for (int tid = 0; tid < ntraces; tid++)
- //    {
- // //       streamline_tets.clear();
- //        int nsteps = traces.at(tid).points.size();
- //        std::vector<Eigen::Vector2d> cur_edge;
- //        for (int i = 0; i < nsteps-1; i++ )
- //        {
- //            cur_edge.push_back(Eigen::Vector2d(i, i+1) );
- //        }
- //        std::cout << "traceId: " << tid << "nsteps: " << nsteps << std::endl;
- //        for (int i = 0; i < nsteps-1; i++ )
- //        {
- //            auto cur_trace = traces.at(tid);
- //            int cur_tet_id = cur_trace.tetIds.at(i);
- //            streamline_tets.push_back(T_mesh.row(cur_tet_id));
- //            // std::cout << "cur_tet_id: " << cur_tet_id << std::endl;
- //            tet_colors(cur_tet_id) = 1.;
- //        }
-
- //        auto *single_streamline = polyscope::registerCurveNetwork("streamline" + std::to_string(tid), traces.at(tid).points, cur_edge);
- //        single_streamline->setTransparency(.7);
- //        single_streamline->setRadius(0.005);
-        
- //    }

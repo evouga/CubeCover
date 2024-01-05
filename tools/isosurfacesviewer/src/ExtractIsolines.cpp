@@ -1,4 +1,4 @@
-#include "ExtractIsoSurfaces.h"
+#include "ExtractIsolines.h"
 #include "TetMeshConnectivity.h"
 #include <cassert>
 #include <vector>
