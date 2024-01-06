@@ -23,6 +23,13 @@ enum ParametrizationType {
   kIntegerGrid = 1,
 };
 
+enum StreamLineType {
+  kInit = 0,
+  kGradient = 1,
+  kInitPerp = 2,
+  kInitBestMatchGrad = 3,
+};
+
 static void RenderIsoSurfaces(const std::vector<Eigen::MatrixXd>& isoVs, const std::vector<Eigen::MatrixXi>& isoFs, const std::vector<int>& iso_vals, int iso_surface_idx) {
   for(int i = 0; i < isoVs.size(); i++) {
     if(iso_surface_idx < 0 || iso_surface_idx > isoVs.size() - 1) {
@@ -169,6 +176,36 @@ std::vector<Eigen::VectorXd> GetFrameDifference(const Eigen::MatrixXd& frame0, c
   return errs;
 }
 
+std::vector<Eigen::MatrixXd> GetBestMatchFrames(const std::vector<Eigen::MatrixXd>& frame_list, const Eigen::MatrixXd& frame1) {
+  if(frame_list.empty()) {
+    return {};
+  }
+
+  int neles = frame_list[0].rows();
+  int nvecs = frame_list.size();
+  std::vector<Eigen::MatrixXd> best_frame_list_1(nvecs, Eigen::MatrixXd::Zero(neles, 3));
+  for(int vec_id = 0; vec_id < nvecs; vec_id++) {
+    for(int ele_id = 0; ele_id < neles; ele_id++) {
+      Eigen::RowVector3d v0 = frame_list[vec_id].row(ele_id);
+
+      double min_err = std::numeric_limits<double>::max();
+      for(int vec_id1 = 0; vec_id1 < nvecs; vec_id1++) {
+        Eigen::RowVector3d v1 = frame1.row(nvecs * ele_id + vec_id1);
+        double err = (v0 - v1).norm();
+        if(err < min_err) {
+          best_frame_list_1[vec_id].row(ele_id) = v1;
+          min_err = err;
+        }
+        if(err < min_err) {
+          best_frame_list_1[vec_id].row(ele_id) = -v1;
+          min_err = err;
+        }
+      }
+    }
+  }
+  return best_frame_list_1;
+}
+
 static void RenderScalarFields(polyscope::VolumeMesh* tet_mesh, const Eigen::MatrixXd& values) {
   for(int i = 0; i < 3; i++) {
     Eigen::MatrixXd vertex_color = PaintPhi(values.col(i));
@@ -177,7 +214,7 @@ static void RenderScalarFields(polyscope::VolumeMesh* tet_mesh, const Eigen::Mat
   }
 }
 
-static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, const Eigen::MatrixXd& V, const Eigen::MatrixXi& T) {
+static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, const Eigen::MatrixXd& V, const Eigen::MatrixXi& T, int nframes = 1, std::string name = "") {
   Eigen::VectorXd tet_colors;
   tet_colors.resize(T.rows());
   tet_colors.setZero();
@@ -189,11 +226,11 @@ static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, 
 
   for (int tid = 0; tid < ntraces; tid++)
   {
-    int nsteps = traces.at(tid).tetIds.size();
+    int nsteps = traces.at(tid).tet_ids_.size();
     for (int i = 0; i < nsteps; i++ )
     {
       auto cur_trace = traces.at(tid);
-      int cur_tet_id = cur_trace.tetIds.at(i);
+      int cur_tet_id = cur_trace.tet_ids_.at(i);
       streamline_tets.push_back(T.row(cur_tet_id));
       tet_colors(cur_tet_id) = 1.;
     }
@@ -201,9 +238,8 @@ static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, 
 
   Eigen::MatrixXd cur_points;
   Eigen::MatrixXd points;
-  int nfam = ntraces;
 
-  for (int cur_fam_id = 0; cur_fam_id < nfam; cur_fam_id++)
+  for (int cur_fam_id = 0; cur_fam_id < nframes; cur_fam_id++)
   {
     int iter = 0;
     std::vector<Eigen::Vector2d> cur_line_edges;
@@ -211,31 +247,31 @@ static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, 
 
     for (int tid = 0; tid < ntraces; tid++)
     {
-      int tid_fam_id = tid % nfam;
+      int tid_fam_id = tid % nframes;
       if (tid_fam_id == cur_fam_id)
       {
-        int nsteps = traces.at(tid).points.size();
+        int nsteps = traces.at(tid).stream_pts_.size();
 
-        Eigen::Vector3d first_edge = traces.at(tid).points.at(1) - traces.at(tid).points.at(0);
+        Eigen::Vector3d first_edge = traces.at(tid).stream_pts_[1].start_pt_ - traces.at(tid).stream_pts_[0].start_pt_;
         double fen = first_edge.norm();
 
         int cur_len = 0;
         bool addLast = true;
         for (int i = 0; i < nsteps-1; i++ )
         {
-          Eigen::Vector3d edge = traces.at(tid).points.at(i) - traces.at(tid).points.at(i+1);
+          Eigen::Vector3d edge = traces.at(tid).stream_pts_[i].start_pt_ - traces.at(tid).stream_pts_[i + 1].start_pt_;
           if (edge.norm() > fen * 5 )
           {
             addLast = false;
             break;
           }
-          cur_points.push_back( traces.at(tid).points.at(i) );
+          cur_points.push_back( traces.at(tid).stream_pts_[i].start_pt_ );
           cur_len++;
 
         }
         if (addLast)
         {
-          cur_points.push_back( traces.at(tid).points.at(nsteps-1) );
+          cur_points.push_back( traces.at(tid).stream_pts_[nsteps - 1].start_pt_ );
           cur_len++;
         }
 
@@ -249,7 +285,7 @@ static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, 
 
     }
 
-    auto *single_streamline = polyscope::registerCurveNetwork("streamline" + std::to_string(cur_fam_id), cur_points, cur_line_edges);
+    auto *single_streamline = polyscope::registerCurveNetwork(name + "streamline" + std::to_string(cur_fam_id), cur_points, cur_line_edges);
     single_streamline->setTransparency(1);
     single_streamline->setRadius(0.003);
 
@@ -284,10 +320,14 @@ Eigen::MatrixXi assignments;
 Eigen::MatrixXd values;
 
 double global_rescaling = 1.0;
+int sample_density = 100;
+bool is_random_inside = false;
+double stream_pt_eps = 1e-2;
 
 int iso_surface_idx = -1;
 
 ParametrizationType param_type = kSeamless;
+StreamLineType streamline_type = kInitPerp;
 
 std::string save_folder;
 
@@ -308,6 +348,63 @@ void callback() {
     }
   }
 
+  if(ImGui::CollapsingHeader("Streamlines tracing", ImGuiTreeNodeFlags_DefaultOpen)) {
+    ImGui::Combo("Streamline Type", (int*)&streamline_type, "Init\0Gradient\0Init Perp\0Best Match Init\0");
+    ImGui::Checkbox("Random Inside Pts", &is_random_inside);
+    ImGui::InputInt("Sample Density", &sample_density);
+    ImGui::InputDouble("Stream Point Eps", &stream_pt_eps);
+    if(ImGui::Button("Trace Stream lines")) {
+      std::vector<CubeCover::Streamline> traces;
+      int max_iter_per_trace = 700;
+
+      Eigen::MatrixXd frame_vecs;
+      std::string frame_name = "input ";
+      std::vector<Eigen::MatrixXd> frame_list;
+
+      switch (streamline_type) {
+      case kInit: {
+        frame_vecs = frames;
+        frame_list = ExtractFrameVectors(T.rows(), frame_vecs);
+        break;
+      }
+      case kGradient: {
+        frame_vecs = ComputeGradient(V, mesh, values);
+        frame_name = "gradient ";
+        frame_list = ExtractFrameVectors(T.rows(), frame_vecs);
+        break;
+      }
+      case kInitPerp:{
+        frame_vecs = frames_to_trace;
+        frame_name = "input cross product ";
+        frame_list = ExtractFrameVectors(T.rows(), frame_vecs);
+        break;
+      }
+      case kInitBestMatchGrad: {
+        Eigen::MatrixXd grad_vec = ComputeGradient(V, mesh, values);
+        std::vector<Eigen::MatrixXd> grad_list = ExtractFrameVectors(T.rows(), grad_vec);
+        frame_list = GetBestMatchFrames(grad_list, frames);
+        frame_name = "best mathc input ";
+      }
+      }
+
+      auto pc_mesh = polyscope::getPointCloud("centroid pc");
+      if(streamline_type == kInitPerp) {
+        CubeCover::TraceStreamlines(V, mesh, frames_to_trace, max_iter_per_trace,
+                                    traces, sample_density, is_random_inside,
+                                    stream_pt_eps);
+        RenderStreamlines(traces, V, T, 1,
+                          frame_name);
+      } else {
+        for(int i = 0; i < frame_list.size(); i++) {
+          CubeCover::TraceStreamlines(V, mesh, frame_list[i], max_iter_per_trace, traces, sample_density, is_random_inside, stream_pt_eps);
+          RenderStreamlines(traces, V, T, 1, frame_name + std::to_string(i) + " ");
+          pc_mesh->addVectorQuantity(frame_name + std::to_string(i), frame_list[i]);
+        }
+      }
+
+    }
+  }
+
   if (ImGui::CollapsingHeader("Visualization Options", ImGuiTreeNodeFlags_DefaultOpen)) {
     if(ImGui::Button("Iso Lines extraction")) {
       Eigen::MatrixXd P;
@@ -322,20 +419,6 @@ void callback() {
       psCurves->setRadius(0.003);
       auto *psCurves2 = polyscope::registerCurveNetwork("Bad Isolines", P2, E2);
       psCurves2->setRadius(0.003);
-    }
-    if(ImGui::Button("Trace Stream lines")) {
-      std::vector<CubeCover::Streamline> traces;
-      int max_iter_per_trace = 700;
-      std::vector<int> init_tet_ids = CubeCover::InitializeTracingTets(mesh, values);
-      init_tet_ids = {};
-      CubeCover::FrameField* field = CubeCover::fromFramesAndAssignments(mesh, frames_to_trace, assignments, true);
-
-      field->computeLocalAssignments();
-      field->combAssignments();
-
-      TraceStreamlines(V, mesh, *field, init_tet_ids, max_iter_per_trace, traces);
-
-      RenderStreamlines(traces, V, T);
     }
 
     if(ImGui::Button("Iso Surfaces Extraction")) {
@@ -502,6 +585,10 @@ int main(int argc, char *argv[])
   IntegrateFrames(frames, V, T, param_type, assignments, values, global_rescaling);
 
   std::vector<Eigen::MatrixXd> frame_vec = ExtractFrameVectors(T.rows(), frames);
+
+  double min_len = std::min(V.col(0).maxCoeff() - V.col(0).minCoeff(), V.col(1).maxCoeff() - V.col(1).minCoeff());
+  min_len = std::min(min_len, V.col(2).maxCoeff() - V.col(2).minCoeff());
+  stream_pt_eps = 1e-1 * min_len;
 
   polyscope::init();
 
