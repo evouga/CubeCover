@@ -14,8 +14,8 @@
 #include "readMeshFixed.h"
 #include "CubeCover.h"
 #include "SurfaceExtraction.h"
-#include "ExtractIsolines.h"
-#include "TraceStreamlines.h"
+#include "StreamlinesExtraction.h"
+#include "IsolinesExtraction.h"
 
 
 enum ParametrizationType {
@@ -116,6 +116,59 @@ static Eigen::MatrixXd PaintPhi(const Eigen::VectorXd& phi, Eigen::VectorXd* bri
   return color;
 }
 
+static Eigen::MatrixXd ComputeGradient(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectivity& mesh, const Eigen::MatrixXd& values) {
+  int nvecs = values.cols();
+  int ntets = mesh.nTets();
+
+  // assume that the values are defined on the tet soup
+  auto get_soup_vid = [&](int tet_id, int j) {
+    return 4 * tet_id + j;    // this is corresponding to the tet(tet_id, j)
+  };
+
+  Eigen::MatrixXd grad_fields(ntets * nvecs, 3);
+
+  for(int vec_id = 0; vec_id < nvecs; vec_id++) {
+    for(int tet_id = 0; tet_id < ntets; tet_id++) {
+      Eigen::Matrix3d A;
+      Eigen::Vector3d rhs;
+      for(int j = 0; j < 3; j++) {
+        A.row(j) = V.row(mesh.tetVertex(tet_id, j + 1)) - V.row(mesh.tetVertex(tet_id, 0));
+        rhs[j] = values(get_soup_vid(tet_id, j + 1), vec_id) - values(get_soup_vid(tet_id, 0), vec_id);
+      }
+      if(std::abs(A.determinant()) > 1e-10) {
+        Eigen::Vector3d grad = A.inverse() * rhs;
+        grad_fields.row(nvecs * tet_id + vec_id) << grad[0], grad[1], grad[2];
+      } else {
+        grad_fields.row(nvecs * tet_id + vec_id).setZero();
+      }
+    }
+  }
+  return grad_fields;
+}
+
+std::vector<Eigen::VectorXd> GetFrameDifference(const Eigen::MatrixXd& frame0, const Eigen::MatrixXd& frame1, int nvecs) {
+  int neles = frame0.rows() / nvecs;
+  std::vector<Eigen::VectorXd> errs(nvecs, Eigen::VectorXd::Zero(neles));
+  for(int vec_id = 0; vec_id < nvecs; vec_id++) {
+    for(int ele_id = 0; ele_id < neles; ele_id++) {
+      Eigen::RowVector3d v0 = frame0.row(nvecs * ele_id + vec_id);
+
+      double min_err = std::numeric_limits<double>::max();
+      for(int vec_id1 = 0; vec_id1 < nvecs; vec_id1++) {
+        Eigen::RowVector3d v1 = frame1.row(nvecs * ele_id + vec_id1);
+        double err = (v0 - v1).norm();
+        min_err = std::min(min_err, err);
+
+        err = (v0 + v1).norm();
+        min_err = std::min(min_err, err);
+      }
+
+      errs[vec_id][ele_id] = min_err;
+    }
+  }
+  return errs;
+}
+
 static void RenderScalarFields(polyscope::VolumeMesh* tet_mesh, const Eigen::MatrixXd& values) {
   for(int i = 0; i < 3; i++) {
     Eigen::MatrixXd vertex_color = PaintPhi(values.col(i));
@@ -124,7 +177,7 @@ static void RenderScalarFields(polyscope::VolumeMesh* tet_mesh, const Eigen::Mat
   }
 }
 
-static void RenderStreamlines(const std::vector<Streamline>& traces, const Eigen::MatrixXd& V, const Eigen::MatrixXi& T) {
+static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, const Eigen::MatrixXd& V, const Eigen::MatrixXi& T) {
   Eigen::VectorXd tet_colors;
   tet_colors.resize(T.rows());
   tet_colors.setZero();
@@ -142,14 +195,13 @@ static void RenderStreamlines(const std::vector<Streamline>& traces, const Eigen
       auto cur_trace = traces.at(tid);
       int cur_tet_id = cur_trace.tetIds.at(i);
       streamline_tets.push_back(T.row(cur_tet_id));
-      // std::cout << "cur_tet_id: " << cur_tet_id << std::endl;
       tet_colors(cur_tet_id) = 1.;
     }
   }
 
   Eigen::MatrixXd cur_points;
   Eigen::MatrixXd points;
-  int nfam = 6;
+  int nfam = ntraces;
 
   for (int cur_fam_id = 0; cur_fam_id < nfam; cur_fam_id++)
   {
@@ -162,7 +214,6 @@ static void RenderStreamlines(const std::vector<Streamline>& traces, const Eigen
       int tid_fam_id = tid % nfam;
       if (tid_fam_id == cur_fam_id)
       {
-        //       streamline_tets.clear();
         int nsteps = traces.at(tid).points.size();
 
         Eigen::Vector3d first_edge = traces.at(tid).points.at(1) - traces.at(tid).points.at(0);
@@ -188,9 +239,6 @@ static void RenderStreamlines(const std::vector<Streamline>& traces, const Eigen
           cur_len++;
         }
 
-
-
-
         for (int i = 0; i < cur_len-1; i++ )
         {
           cur_line_edges.push_back(Eigen::Vector2d(iter+i, iter+i+1) );
@@ -198,8 +246,6 @@ static void RenderStreamlines(const std::vector<Streamline>& traces, const Eigen
         iter = iter + cur_len;
 
       }
-
-
 
     }
 
@@ -270,7 +316,7 @@ void callback() {
       Eigen::MatrixXd P2;
       Eigen::MatrixXi E2;
 
-      extractIsolines(V, mesh, values, P, E, P2, E2);
+      CubeCover::ExtractIsolines(V, mesh, values, P, E, P2, E2);
 
       auto *psCurves = polyscope::registerCurveNetwork("Isolines", P, E);
       psCurves->setRadius(0.003);
@@ -278,16 +324,16 @@ void callback() {
       psCurves2->setRadius(0.003);
     }
     if(ImGui::Button("Trace Stream lines")) {
-      std::vector<Streamline> traces;
+      std::vector<CubeCover::Streamline> traces;
       int max_iter_per_trace = 700;
-
-      Eigen::VectorXi init_tet_ids;
+      std::vector<int> init_tet_ids = CubeCover::InitializeTracingTets(mesh, values);
+      init_tet_ids = {};
       CubeCover::FrameField* field = CubeCover::fromFramesAndAssignments(mesh, frames_to_trace, assignments, true);
 
       field->computeLocalAssignments();
       field->combAssignments();
 
-      traceStreamlines(V, mesh, *field, init_tet_ids, max_iter_per_trace, traces);
+      TraceStreamlines(V, mesh, *field, init_tet_ids, max_iter_per_trace, traces);
 
       RenderStreamlines(traces, V, T);
     }
@@ -317,6 +363,20 @@ void callback() {
       }
 
       RenderIsoSurfaces(isoVs, isoFs, iso_vals, iso_surface_idx);
+    }
+
+    if(ImGui::Button("Compute Gradient")) {
+      Eigen::MatrixXd grad = ComputeGradient(V, mesh, values);
+      std::vector<Eigen::MatrixXd> grad_vec = ExtractFrameVectors(T.rows(), grad);
+
+      std::vector<Eigen::VectorXd> errs = GetFrameDifference(frames, grad, grad_vec.size());
+
+      auto tet_mesh = polyscope::getVolumeMesh("tet soup mesh");
+      auto pc_mesh = polyscope::getPointCloud("centroid pc");
+      for(int i = 0; i < 3; i++) {
+        pc_mesh->addVectorQuantity("gradient " + std::to_string(i), grad_vec[i]);
+        tet_mesh->addCellScalarQuantity("error " + std::to_string(i), errs[i]);
+      }
     }
   }
 
@@ -455,9 +515,24 @@ int main(int argc, char *argv[])
   std::tie(soup_V, soup_T) = GetTetSoup(V, T);
 
   auto tet_mesh = polyscope::registerTetMesh("tet soup mesh", soup_V, soup_T);
+
+  std::vector<Eigen::Vector3d> centroids;
+  for(int i = 0; i < T.rows(); i++) {
+    Eigen::Vector3d c;
+    c.setZero();
+    for(int j = 0; j < 4; j++) {
+      c += V.row(T(i, j));
+    }
+    c /= 4;
+    centroids.emplace_back(c);
+  }
+
+  auto pc_mesh = polyscope::registerPointCloud("centroid pc", centroids);
+  pc_mesh->setEnabled(false);
+
   std::vector<int> face_ids = {};
   for(int i = 0; i < 3; i++) {
-    tet_mesh->addCellVectorQuantity("frame " + std::to_string(i), frame_vec[i]);
+    pc_mesh->addVectorQuantity("frame " + std::to_string(i), frame_vec[i]);
   }
 
   RenderScalarFields(tet_mesh, values);

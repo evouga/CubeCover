@@ -17,7 +17,7 @@ set(BUILD_MINT_FRONTEND ON CACHE BOOL "Build the mint frame field solver front e
 set(BUILD_MINT_UTILS ON CACHE BOOL "C++ utils used by some parts of mint, should be ported to mex")
 
 set(USE_GUROBI ON CACHE BOOL "Use Gurobi for solving MIPs")
-set(USE_COMISO OFF CACHE BOOL "Use Comiso for solving MIPs")
+set(USE_COMISO ON CACHE BOOL "Use Comiso for solving MIPs")
 
 # Libigl
 set(LIBIGL_WITH_COMISO $CACHE{USE_COMISO} CACHE BOOL "Build LIBIGL with CoMISo" FORCE)
@@ -49,7 +49,7 @@ endif()
 file(GLOB SRCFILES src/*.cpp src/*.h src/*.hpp)	  
 
 add_library(${PROJECT_NAME} ${SRCFILES})
-target_include_directories(${PROJECT_NAME} PUBLIC ${EIGEN3_INCLUDE_DIR})
+# target_include_directories(${PROJECT_NAME} PUBLIC ${EIGEN3_INCLUDE_DIR})
 target_link_libraries(${PROJECT_NAME} igl::core)
 if(USE_COMISO)
     target_link_libraries(${PROJECT_NAME} igl::comiso)
@@ -75,7 +75,7 @@ endif()
 
 if(BUILD_ISOLINE_VIEWER)
   add_subdirectory(tools/isolineviewer)
-  add_subdirectory(tools/isolineviewer_fancy)
+#  add_subdirectory(tools/isolineviewer_fancy)
   # add_subdirectory(tools/boundarystreamlineviewer)
   add_subdirectory(tools/volumeparamviewer)
 endif()
