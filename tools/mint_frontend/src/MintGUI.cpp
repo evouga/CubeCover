@@ -33,16 +33,22 @@
 // for convenience
 using json = nlohmann::json;
 
-
-// This is c++14 experimental feature.  In c++17 >= this is part of STD.
+// Support ancient versions of GCC still used in stubborn distros.
+#if defined(__GNUC__) && !__has_include(<filesystem>)
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
+#else
+#include <filesystem>
+#ifdef __APPLE__
+namespace fs = std::__fs::filesystem;
+#else
+namespace fs = std::filesystem;
+#endif
+#endif
 
 
 namespace MintFrontend
 {
-
-
 static void HelpMarker(const char* desc)
 {
     ImGui::TextDisabled("(?)");

@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
 project(hexextoOpenVDB)
 
-# Find Eigen
-find_package(Eigen3 3.3 REQUIRED)
 find_package(OpenMP REQUIRED)
 
 file(GLOB SRCFILES src/*.cpp src/*.h src/*.hpp)	  

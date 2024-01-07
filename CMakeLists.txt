@@ -16,7 +16,7 @@ set(BUILD_VIZ_TOOLS OFF CACHE BOOL "Build Stuff for Volume Rendering")
 set(BUILD_MINT_FRONTEND ON CACHE BOOL "Build the mint frame field solver front end.")
 set(BUILD_MINT_UTILS ON CACHE BOOL "C++ utils used by some parts of mint, should be ported to mex")
 
-set(USE_GUROBI ON CACHE BOOL "Use Gurobi for solving MIPs")
+set(USE_GUROBI OFF CACHE BOOL "Use Gurobi for solving MIPs")
 set(USE_COMISO ON CACHE BOOL "Use Comiso for solving MIPs")
 
 # Libigl
@@ -25,7 +25,8 @@ include(libigl)
 
 if(BUILD_SINGULARITY_VIEWER OR BUILD_ISOLINE_VIEWER OR BUILD_MINT_FRONTEND OR BUILD_ISOSURFACE_VIEWER)
   # Find Polyscope
-  find_package(Polyscope REQUIRED)
+  # find_package(Polyscope REQUIRED)
+  include(polyscope)
 endif()
 
 if(BUILD_VIZ_TOOLS)
@@ -49,7 +50,6 @@ endif()
 file(GLOB SRCFILES src/*.cpp src/*.h src/*.hpp)	  
 
 add_library(${PROJECT_NAME} ${SRCFILES})
-# target_include_directories(${PROJECT_NAME} PUBLIC ${EIGEN3_INCLUDE_DIR})
 target_link_libraries(${PROJECT_NAME} igl::core)
 if(USE_COMISO)
     target_link_libraries(${PROJECT_NAME} igl::comiso)

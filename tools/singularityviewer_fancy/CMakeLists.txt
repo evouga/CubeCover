@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
 project(singularityviewer_fancy)
 
-# Find Eigen
-find_package(Eigen3 3.3 REQUIRED)
-
 file(GLOB SRCFILES src/*.cpp src/*.h src/*.hpp)	  
 
 add_executable(${PROJECT_NAME} ${SRCFILES})

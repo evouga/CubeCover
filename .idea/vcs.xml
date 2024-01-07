@@ -5,6 +5,5 @@
     <mapping directory="$PROJECT_DIR$/build/_deps/libigl-src" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/build/_deps/libigl-src/external/CoMISo" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/build/_deps/libigl-src/external/eigen" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-relwithdebinfo/_deps/libigl-src" vcs="Git" />
   </component>
 </project>

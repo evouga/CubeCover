@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.11)
 project(mint_frontend)
 
-# Find Eigen
-find_package(Eigen3 3.3 REQUIRED)
 
 file(GLOB SRCFILES src/*.cpp src/*.h src/*.hpp)	  
 
@@ -22,7 +20,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD_REQUIRED ON)
 IF (WIN32)
     target_link_libraries(${PROJECT_NAME} cubecover polyscope nlohmann_json::nlohmann_json)
 ELSE()
-    target_link_libraries(${PROJECT_NAME} cubecover polyscope nlohmann_json::nlohmann_json stdc++fs)
+    target_link_libraries(${PROJECT_NAME} cubecover polyscope nlohmann_json::nlohmann_json)
 ENDIF()
 
 
