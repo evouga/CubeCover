@@ -12,10 +12,16 @@
 #include "TetMeshConnectivity.h"
 #include "ReadFrameField.h"
 #include "readMeshFixed.h"
+#include "ReadHexEx.h"
 #include "CubeCover.h"
 #include "SurfaceExtraction.h"
 #include "StreamlinesExtraction.h"
 #include "IsolinesExtraction.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846264338327950
+#endif // !M_PI
+
 
 
 enum ParametrizationType {
@@ -196,6 +202,7 @@ std::vector<Eigen::MatrixXd> GetBestMatchFrames(const std::vector<Eigen::MatrixX
           best_frame_list_1[vec_id].row(ele_id) = v1;
           min_err = err;
         }
+        err = (v0 + v1).norm();
         if(err < min_err) {
           best_frame_list_1[vec_id].row(ele_id) = -v1;
           min_err = err;
@@ -215,41 +222,20 @@ static void RenderScalarFields(polyscope::VolumeMesh* tet_mesh, const Eigen::Mat
 }
 
 static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, const Eigen::MatrixXd& V, const Eigen::MatrixXi& T, int nframes = 1, std::string name = "") {
-  Eigen::VectorXd tet_colors;
-  tet_colors.resize(T.rows());
-  tet_colors.setZero();
   int ntets_mesh = T.rows();
   int ntraces = traces.size();
-
-  std::vector<Eigen::Vector4i> streamline_tets;
-
-
-  for (int tid = 0; tid < ntraces; tid++)
-  {
-    int nsteps = traces.at(tid).tet_ids_.size();
-    for (int i = 0; i < nsteps; i++ )
-    {
-      auto cur_trace = traces.at(tid);
-      int cur_tet_id = cur_trace.tet_ids_.at(i);
-      streamline_tets.push_back(T.row(cur_tet_id));
-      tet_colors(cur_tet_id) = 1.;
-    }
-  }
 
   Eigen::MatrixXd cur_points;
   Eigen::MatrixXd points;
 
-  for (int cur_fam_id = 0; cur_fam_id < nframes; cur_fam_id++)
-  {
+  for (int cur_fam_id = 0; cur_fam_id < nframes; cur_fam_id++) {
     int iter = 0;
     std::vector<Eigen::Vector2d> cur_line_edges;
     std::vector<Eigen::Vector3d> cur_points;
 
-    for (int tid = 0; tid < ntraces; tid++)
-    {
+    for (int tid = 0; tid < ntraces; tid++) {
       int tid_fam_id = tid % nframes;
-      if (tid_fam_id == cur_fam_id)
-      {
+      if (tid_fam_id == cur_fam_id) {
         int nsteps = traces.at(tid).stream_pts_.size();
 
         Eigen::Vector3d first_edge = traces.at(tid).stream_pts_[1].start_pt_ - traces.at(tid).stream_pts_[0].start_pt_;
@@ -257,30 +243,24 @@ static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, 
 
         int cur_len = 0;
         bool addLast = true;
-        for (int i = 0; i < nsteps-1; i++ )
-        {
+        for (int i = 0; i < nsteps-1; i++ ) {
           Eigen::Vector3d edge = traces.at(tid).stream_pts_[i].start_pt_ - traces.at(tid).stream_pts_[i + 1].start_pt_;
-          if (edge.norm() > fen * 5 )
-          {
+          if (edge.norm() > fen * 5 ) {
             addLast = false;
             break;
           }
           cur_points.push_back( traces.at(tid).stream_pts_[i].start_pt_ );
           cur_len++;
-
         }
-        if (addLast)
-        {
+        if (addLast) {
           cur_points.push_back( traces.at(tid).stream_pts_[nsteps - 1].start_pt_ );
           cur_len++;
         }
 
-        for (int i = 0; i < cur_len-1; i++ )
-        {
+        for (int i = 0; i < cur_len-1; i++ ) {
           cur_line_edges.push_back(Eigen::Vector2d(iter+i, iter+i+1) );
         }
         iter = iter + cur_len;
-
       }
 
     }
@@ -288,8 +268,6 @@ static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, 
     auto *single_streamline = polyscope::registerCurveNetwork(name + "streamline" + std::to_string(cur_fam_id), cur_points, cur_line_edges);
     single_streamline->setTransparency(1);
     single_streamline->setRadius(0.003);
-
-
   }
 }
 
@@ -489,7 +467,7 @@ int main(int argc, char *argv[])
 {
   if (argc != 3 && argc != 4)
   {
-    std::cerr << "Usage: isosurfaceviewer (.mesh file) (.bfra file or .fra file) [save folder]" << std::endl;
+    std::cerr << "Usage: isosurfaceviewer (.mesh file) (.bfra file or .fra file) [.hexex file]" << std::endl;
     return -1;
   }
 
@@ -497,9 +475,11 @@ int main(int argc, char *argv[])
   std::string frafile = argv[2];
   std::string permfile;
 
-  std::string outfile;
-  if (argc == 4)
-    save_folder = argv[3];
+  std::string hexexfile = "";
+  if (argc == 4) {
+      hexexfile = argv[3];
+  }
+      
 
   Eigen::MatrixXi F;
   if (!CubeCover::readMESH(meshfile, V, T, F))
@@ -582,13 +562,29 @@ int main(int argc, char *argv[])
     }
   }
 
-  IntegrateFrames(frames, V, T, param_type, assignments, values, global_rescaling);
+  if (hexexfile == "") {
+      IntegrateFrames(frames, V, T, param_type, assignments, values, global_rescaling);
+  }
+  else {
+      Eigen::MatrixXd V1;
+      Eigen::MatrixXi T1;
+      if (!CubeCover::readHexEx(hexexfile, V1, T1, values))
+      {
+          std::cerr << "error reading the .hexex file" << std::endl;
+          return -1;
+      }
+      else {
+          if (V1.rows() != V.rows() || (T - T1).norm() != 0) {
+              std::cout << "mesh dismatched!" << std::endl;
+              return -1;
+          }
+      }
+  }
+
+  
 
   std::vector<Eigen::MatrixXd> frame_vec = ExtractFrameVectors(T.rows(), frames);
-
-  double min_len = std::min(V.col(0).maxCoeff() - V.col(0).minCoeff(), V.col(1).maxCoeff() - V.col(1).minCoeff());
-  min_len = std::min(min_len, V.col(2).maxCoeff() - V.col(2).minCoeff());
-  stream_pt_eps = 1e-1 * min_len;
+  stream_pt_eps = 0;
 
   polyscope::init();
 

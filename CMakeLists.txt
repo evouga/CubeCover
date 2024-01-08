@@ -60,8 +60,8 @@ if(USE_GUROBI)
     target_compile_definitions(${PROJECT_NAME} PUBLIC HAS_GUROBI)
 endif()
 
-# Use C++14
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 14)
+# Use C++17
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD_REQUIRED ON)
 
 install(TARGETS ${PROJECT_NAME})
