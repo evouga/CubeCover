@@ -36,6 +36,12 @@ enum StreamLineType {
   kInitBestMatchGrad = 3,
 };
 
+enum StreamLineTracingType {
+    kRandomCentroid = 0,    // randomly sample the tet ids and use its centroid as the starting point
+    kRandom = 1,            // randomly sample the tet ids and use a random point inside tets for starting point
+    kGridPt = 2,            // use integer grid points
+};
+
 static void RenderIsoSurfaces(const std::vector<Eigen::MatrixXd>& isoVs, const std::vector<Eigen::MatrixXi>& isoFs, const std::vector<int>& iso_vals, int iso_surface_idx) {
   for(int i = 0; i < isoVs.size(); i++) {
     if(iso_surface_idx < 0 || iso_surface_idx > isoVs.size() - 1) {
@@ -224,10 +230,12 @@ static void RenderScalarFields(polyscope::VolumeMesh* tet_mesh, const Eigen::Mat
 static Eigen::Vector3d SegmentColor(const Eigen::Vector3d& dir, Eigen::Matrix3d rot_mat = Eigen::Matrix3d::Identity()) {
   Eigen::Vector3d dir_hat = dir.normalized();
   dir_hat = rot_mat * dir_hat;
-  double theta = atan2(dir_hat[1], dir_hat[0]) + M_PI;
-  double h = 360 / 2 / M_PI * theta;
-  double v = dir_hat[2];
-  double s = 1.0;
+  double phi = atan2(dir_hat[1], dir_hat[0]) + M_PI;
+  double theta = acos(dir_hat[1]);
+
+  double h = 360 / 2 / M_PI * phi;
+  double v = 1;
+  double s = std::sin(theta);
 
   Eigen::Vector3d rgb;
   hsv_to_rgb(h, s, v, rgb[0], rgb[1], rgb[2]);
@@ -315,7 +323,6 @@ Eigen::MatrixXd values;
 
 double global_rescaling = 1.0;
 int sample_density = 100;
-bool is_random_inside = false;
 double stream_pt_eps = 1e-2;
 
 int iso_surface_idx = -1;
@@ -326,6 +333,7 @@ Eigen::Matrix3d rot_mat = Eigen::Matrix3d::Identity();
 
 ParametrizationType param_type = kSeamless;
 StreamLineType streamline_type = kInitPerp;
+StreamLineTracingType streamline_tracing_type = kRandomCentroid;
 
 std::string save_folder;
 
@@ -349,7 +357,7 @@ void callback() {
 
   if(ImGui::CollapsingHeader("Streamlines tracing", ImGuiTreeNodeFlags_DefaultOpen)) {
     ImGui::Combo("Streamline Type", (int*)&streamline_type, "Init\0Gradient\0Init Perp\0Best Match Init\0");
-    ImGui::Checkbox("Random Inside Pts", &is_random_inside);
+    ImGui::Combo("Tracing Pt Type", (int*)&streamline_tracing_type, "Random Sample Centroid\0Random\0Grid Points\0");
     ImGui::InputInt("Sample Density", &sample_density);
     ImGui::InputDouble("Stream Point Eps", &stream_pt_eps);
     if(ImGui::Button("Trace Stream lines")) {
@@ -366,7 +374,13 @@ void callback() {
       case kInit: {
         frame_vecs = frames;
         frame_list = ExtractFrameVectors(T.rows(), frame_vecs);
-        CubeCover::TraceStreamlines(V, mesh, frame_vecs, max_iter_per_trace, traces, sample_density, is_random_inside, stream_pt_eps);
+        if (streamline_tracing_type == kGridPt) {
+            CubeCover::TraceStreamlines(V, mesh, frame_vecs, values, max_iter_per_trace, traces, stream_pt_eps);
+        }
+        else {
+            CubeCover::TraceStreamlines(V, mesh, frame_vecs, max_iter_per_trace, traces, sample_density, streamline_tracing_type == kRandom, stream_pt_eps);
+        }
+        
         RenderStreamlines(traces, V, T, 1, frame_name, rot_mat);
         input_traces = std::move(traces);
         break;
@@ -375,7 +389,12 @@ void callback() {
         frame_vecs = ComputeGradient(V, mesh, values);
         frame_name = "gradient ";
         frame_list = ExtractFrameVectors(T.rows(), frame_vecs);
-        CubeCover::TraceStreamlines(V, mesh, frame_vecs, max_iter_per_trace, traces, sample_density, is_random_inside, stream_pt_eps);
+        if (streamline_tracing_type == kGridPt) {
+            CubeCover::TraceStreamlines(V, mesh, frame_vecs, values, max_iter_per_trace, traces, stream_pt_eps);
+        }
+        else {
+            CubeCover::TraceStreamlines(V, mesh, frame_vecs, max_iter_per_trace, traces, sample_density, streamline_tracing_type == kRandom, stream_pt_eps);
+        }
         RenderStreamlines(traces, V, T, 1, frame_name, rot_mat);
         grad_traces = std::move(traces);
         break;
@@ -384,9 +403,12 @@ void callback() {
         frame_vecs = frames_to_trace;
         frame_name = "dual input ";
         frame_list = ExtractFrameVectors(T.rows(), frame_vecs);
-        CubeCover::TraceStreamlines(V, mesh, frames_to_trace, max_iter_per_trace,
-                                    traces, sample_density, is_random_inside,
-                                    stream_pt_eps);
+        if (streamline_tracing_type == kGridPt) {
+            CubeCover::TraceStreamlines(V, mesh, frame_vecs, values, max_iter_per_trace, traces, stream_pt_eps);
+        }
+        else {
+            CubeCover::TraceStreamlines(V, mesh, frame_vecs, max_iter_per_trace, traces, sample_density, streamline_tracing_type == kRandom, stream_pt_eps);
+        }
         RenderStreamlines(traces, V, T, 1, frame_name, rot_mat);
         dual_traces = std::move(traces);
         break;
@@ -397,7 +419,12 @@ void callback() {
         frame_vecs = frames_to_trace;
         frame_list = GetBestMatchFrames(grad_list, frames);
         frame_name = "best match input ";
-        CubeCover::TraceStreamlines(V, mesh, frame_vecs, max_iter_per_trace, traces, sample_density, is_random_inside, stream_pt_eps);
+        if (streamline_tracing_type == kGridPt) {
+            CubeCover::TraceStreamlines(V, mesh, frame_vecs, values, max_iter_per_trace, traces, stream_pt_eps);
+        }
+        else {
+            CubeCover::TraceStreamlines(V, mesh, frame_vecs, max_iter_per_trace, traces, sample_density, streamline_tracing_type == kRandom, stream_pt_eps);
+        }
         RenderStreamlines(traces, V, T, 1, frame_name, rot_mat);
         best_match_traces = std::move(traces);
       }

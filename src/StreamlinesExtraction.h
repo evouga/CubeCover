@@ -85,13 +85,16 @@ std::vector<int> InitializeTracingTets(const TetMeshConnectivity& mesh, const Ei
 // Otherwise, we use the tet centroid
 std::vector<std::pair<int, Eigen::Vector3d>> RandomSampleStreamPts(const Eigen::MatrixXd& V, const TetMeshConnectivity& mesh, int nsamples, bool is_random_inside = false);
 
+// Compute the integer grid point within the tet. Assume p = c0 V0 + c1 V1 + c2 V2 + c3 V3. For the j-th channel of values, we have \sum ci * val_ij = k. If we have 3 channels, then we have unique solution.
+std::vector<Eigen::Vector3d> ComputeGridPts(const Eigen::MatrixXd& V, const TetMeshConnectivity& mesh, const Eigen::MatrixXd& values, int tet_id);
+
 // Tracing streamlines
 void TraceStreamlines(const Eigen::MatrixXd& V, const TetMeshConnectivity& mesh, const Eigen::MatrixXd& frames, int max_iter_per_trace,
                       std::vector<Streamline>& traces, int num_seeds = 100, bool is_random_inside = false, double eps = 1e-6);
 
 // Tracing streamlines from integer points. 
 void TraceStreamlines(const Eigen::MatrixXd& V, const TetMeshConnectivity& mesh, const Eigen::MatrixXd& frames, const Eigen::MatrixXd& values, int max_iter_per_trace,
-    std::vector<Streamline>& traces);
+    std::vector<Streamline>& traces, double eps = 1e-6);
 
 // Tracing streamlines if the tracing seeds (stream pts) are given
 void TraceStreamlines(const Eigen::MatrixXd& V, const TetMeshConnectivity& mesh, const Eigen::MatrixXd& frames, const std::vector<std::pair<int, StreamPt>>& init_tracing_pts, int max_iter_per_trace,

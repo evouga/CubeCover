@@ -161,6 +161,66 @@ namespace CubeCover {
 		return tet_ids;
 	}
 
+	std::vector<Eigen::Vector3d> ComputeGridPts(const Eigen::MatrixXd& V, const TetMeshConnectivity& mesh, const Eigen::MatrixXd& values, int tet_id) {
+		if (values.cols() != 3) {
+			return {};
+		}
+
+		// Assume p = (1 - c0 - c1 - c2) V0 + c0 V1 + c1 V2 + c2 V3, then
+		// F[p] = (1 - c0 - c1 - c2) F0 + c0 F1 + c1 F2 + c2 F3 = c0 (F1 - F0) + c1 (F2 - F0) + c2 (F3 - F0) + F0
+		// [F1 - F0, F2 - F0 , F3 - F0] * [c0, c1, c2]^T = F[p] - F0
+
+		Eigen::Matrix3d A(3, 3);
+		Eigen::Vector3d b(3);
+		std::array<double, 3> min_vals = { std::numeric_limits<double>::max(),std::numeric_limits<double>::max(),std::numeric_limits<double>::max() };
+		std::array<double, 3> max_vals = { std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest() };
+
+		for (int c = 0; c < 3; c++) {
+			A.row(c) << 
+				values(mesh.tetVertex(tet_id, 1), c) - values(mesh.tetVertex(tet_id, 0), c),
+				values(mesh.tetVertex(tet_id, 2), c) - values(mesh.tetVertex(tet_id, 0), c),
+				values(mesh.tetVertex(tet_id, 3), c) - values(mesh.tetVertex(tet_id, 0), c);
+			b(c) = values(mesh.tetVertex(tet_id, 0), c);
+
+			for (int j = 0; j < 4; j++) {
+				int vid = mesh.tetVertex(tet_id, j);
+				double val = values(vid, c);
+				if (val < min_vals[c]) {
+					min_vals[c] = val;
+				}
+				if (val > max_vals[c]) {
+					max_vals[c] = val;
+				}
+			}
+		}
+
+		// prefactorize matrix
+		Eigen::ColPivHouseholderQR<Eigen::MatrixXd> solver(A);
+		std::vector<Eigen::Vector3d> grid_pts;
+
+		for (int k0 = std::ceil(min_vals[0]); k0 <= max_vals[0]; k0++) {
+			for (int k1 = std::ceil(min_vals[1]); k1 <= max_vals[1]; k1++) {
+				for (int k2 = std::ceil(min_vals[2]); k2 <= max_vals[2]; k2++) {
+					Eigen::Vector3d b0;
+					b0 << k0, k1, k2;
+					b0 = b0 - b;
+					Eigen::Vector3d sol = solver.solve(b0);
+
+					// inside the tet
+					if (sol[0] >= 0 && sol[1] >= 0 && sol[2] >= 0 && sol[0] + sol[1] + sol[2] <= 1) {
+						Eigen::RowVector3d p = (1 - sol[0] - sol[1] - sol[2]) * V.row(mesh.tetVertex(tet_id, 0));
+						for (int j = 0; j < 3; j++) {
+							p = p + sol[j] * V.row(mesh.tetVertex(tet_id, j + 1));
+						}
+						grid_pts.push_back(p.transpose());
+					}
+				}
+			}
+		}
+		
+		return grid_pts;
+	}
+
 
 	bool AdvanceStreamline(const Eigen::MatrixXd& V, const TetMeshConnectivity& mesh, const Eigen::MatrixXd& frames,
 		Streamline& s, double stream_pt_eps, bool is_debug) {
@@ -402,8 +462,40 @@ namespace CubeCover {
 	}
 
 	void TraceStreamlines(const Eigen::MatrixXd& V, const TetMeshConnectivity& mesh, const Eigen::MatrixXd& frames, const Eigen::MatrixXd& values, int max_iter_per_trace,
-		std::vector<Streamline>& traces) {
+		std::vector<Streamline>& traces, double eps) {
+		if (values.cols() != 3) {
+			std::cout << "the values doesn't has three channels, go back to use random sample for streamline tracing!" << std::endl;
+			TraceStreamlines(V, mesh, frames, max_iter_per_trace, traces);
+			return;
+		}
+		int ntets = mesh.nTets();
+		assert(frames.rows() == 3 * ntets);
+		int nvecs = frames.rows() / ntets;
+		
+		for (int j = 0; j < 3; j++) {
+			std::cout << "channel j range: " << values.col(j).minCoeff() << ", " << values.col(j).maxCoeff() << std::endl;
+		}
+		
+			
+		std::vector<std::pair<int, StreamPt>> init_tracing_pts;
 
+		// this can be parallelized
+		for (int i = 0; i < ntets; i++) {
+			std::vector<Eigen::Vector3d> grid_pts = ComputeGridPts(V, mesh, values, i);
+			if (!grid_pts.empty()) {
+				for (auto& p : grid_pts) {
+					for (int j = 0; j < nvecs; j++) {
+						for (int orientation = 1; orientation <= -1; orientation -= 2) {
+							Eigen::Vector3d dir = orientation * frames.row(nvecs * i + j);
+							StreamPt stream_pt(p, dir, -1, eps);
+							init_tracing_pts.push_back({ i, stream_pt });
+						}
+					}
+				}
+			}
+		}
+
+		TraceStreamlines(V, mesh, frames, init_tracing_pts, max_iter_per_trace, traces);
 	}
 
 	// Tracing streamlines if the tracing seeds (stream pts) are given
@@ -411,6 +503,7 @@ namespace CubeCover {
 		std::vector<Streamline>& traces) {
 		int counter = 0;
 		int nstreamlines = init_tracing_pts.size();
+		traces.clear();
 
 		std::unordered_set<StreamPt, StreamPt::HashFunction> visited_stream_pts;
 
