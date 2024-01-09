@@ -37,6 +37,8 @@ find_library( GUROBI_LIBRARY
               PATHS "$ENV{GUROBI_HOME}/lib"                    
               )
 
+message("${GUROBI_LIBRARY}")
+
 find_library( GUROBI_CXX_LIBRARY
               NAMES
                   gurobi_c++md2019

@@ -221,54 +221,70 @@ static void RenderScalarFields(polyscope::VolumeMesh* tet_mesh, const Eigen::Mat
   }
 }
 
-static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, const Eigen::MatrixXd& V, const Eigen::MatrixXi& T, int nframes = 1, std::string name = "") {
-  int ntets_mesh = T.rows();
+static Eigen::Vector3d SegmentColor(const Eigen::Vector3d& dir, Eigen::Matrix3d rot_mat = Eigen::Matrix3d::Identity()) {
+  Eigen::Vector3d dir_hat = dir.normalized();
+  dir_hat = rot_mat * dir_hat;
+  double theta = atan2(dir_hat[1], dir_hat[0]) + M_PI;
+  double h = 360 / 2 / M_PI * theta;
+  double v = dir_hat[2];
+  double s = 1.0;
+
+  Eigen::Vector3d rgb;
+  hsv_to_rgb(h, s, v, rgb[0], rgb[1], rgb[2]);
+  return rgb;
+}
+
+static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, const Eigen::MatrixXd& V, const Eigen::MatrixXi& T, int nframes = 1, std::string name = "", Eigen::Matrix3d rot_mat = Eigen::Matrix3d::Identity()) {
+  if(traces.empty()) {
+    return;
+  }
   int ntraces = traces.size();
 
-  Eigen::MatrixXd cur_points;
-  Eigen::MatrixXd points;
+  int iter = 0;
+  std::vector<Eigen::Vector2d> cur_line_edges;
+  std::vector<Eigen::Vector3d> cur_points;
+  std::vector<Eigen::Vector3d> cur_colors;
 
-  for (int cur_fam_id = 0; cur_fam_id < nframes; cur_fam_id++) {
-    int iter = 0;
-    std::vector<Eigen::Vector2d> cur_line_edges;
-    std::vector<Eigen::Vector3d> cur_points;
+  for (int tid = 0; tid < ntraces; tid++) {
+    int nsteps = traces.at(tid).stream_pts_.size();
 
-    for (int tid = 0; tid < ntraces; tid++) {
-      int tid_fam_id = tid % nframes;
-      if (tid_fam_id == cur_fam_id) {
-        int nsteps = traces.at(tid).stream_pts_.size();
+    for (int i = 0; i < nsteps-1; i++ ) {
+      Eigen::Vector3d edge = traces.at(tid).stream_pts_[i].start_pt_ - traces.at(tid).stream_pts_[i + 1].start_pt_;
 
-        Eigen::Vector3d first_edge = traces.at(tid).stream_pts_[1].start_pt_ - traces.at(tid).stream_pts_[0].start_pt_;
-        double fen = first_edge.norm();
-
-        int cur_len = 0;
-        bool addLast = true;
-        for (int i = 0; i < nsteps-1; i++ ) {
-          Eigen::Vector3d edge = traces.at(tid).stream_pts_[i].start_pt_ - traces.at(tid).stream_pts_[i + 1].start_pt_;
-          if (edge.norm() > fen * 5 ) {
-            addLast = false;
-            break;
-          }
-          cur_points.push_back( traces.at(tid).stream_pts_[i].start_pt_ );
-          cur_len++;
-        }
-        if (addLast) {
-          cur_points.push_back( traces.at(tid).stream_pts_[nsteps - 1].start_pt_ );
-          cur_len++;
-        }
-
-        for (int i = 0; i < cur_len-1; i++ ) {
-          cur_line_edges.push_back(Eigen::Vector2d(iter+i, iter+i+1) );
-        }
-        iter = iter + cur_len;
+      if(edge[2] < 0) {
+        edge *= -1;
       }
 
+      Eigen::Vector3d rgb_color = SegmentColor(edge, rot_mat);
+      cur_points.push_back( traces.at(tid).stream_pts_[i].start_pt_ );
+      cur_colors.push_back(rgb_color);
     }
+    cur_points.push_back( traces.at(tid).stream_pts_[nsteps - 1].start_pt_ );
 
-    auto *single_streamline = polyscope::registerCurveNetwork(name + "streamline" + std::to_string(cur_fam_id), cur_points, cur_line_edges);
-    single_streamline->setTransparency(1);
-    single_streamline->setRadius(0.003);
+    for (int i = 0; i < nsteps - 1; i++ ) {
+      cur_line_edges.push_back(Eigen::Vector2d(iter+i, iter+i+1) );
+    }
+    iter = iter + nsteps;
   }
+
+  polyscope::CurveNetwork* streamlines;
+
+  streamlines = polyscope::registerCurveNetwork(name + "streamline", cur_points, cur_line_edges);
+  streamlines->addEdgeColorQuantity("direction colors", cur_colors);
+  streamlines->setTransparency(1);
+  streamlines->setRadius(0.002);
+}
+
+static Eigen::Matrix3d Euler2RotMat(const double roll,
+                                    const double pitch,
+                                    const double yaw )
+{
+  Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
+  Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
+  Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
+
+  Eigen::Quaterniond q = yawAngle * pitchAngle * rollAngle;
+  return q.matrix();
 }
 
 std::vector<Eigen::MatrixXd> ExtractFrameVectors(int ntets, const Eigen::MatrixXd& frames) {
@@ -303,12 +319,17 @@ bool is_random_inside = false;
 double stream_pt_eps = 1e-2;
 
 int iso_surface_idx = -1;
+Eigen::Vector3d rot_axis(0, 0, 1);
+double rot_angle = 0;
+
+Eigen::Matrix3d rot_mat = Eigen::Matrix3d::Identity();
 
 ParametrizationType param_type = kSeamless;
 StreamLineType streamline_type = kInitPerp;
 
 std::string save_folder;
 
+std::vector<CubeCover::Streamline> input_traces, grad_traces, dual_traces, best_match_traces;
 
 void callback() {
   ImGui::PushItemWidth(100);
@@ -339,45 +360,51 @@ void callback() {
       std::string frame_name = "input ";
       std::vector<Eigen::MatrixXd> frame_list;
 
+      auto pc_mesh = polyscope::getPointCloud("centroid pc");
+
       switch (streamline_type) {
       case kInit: {
         frame_vecs = frames;
         frame_list = ExtractFrameVectors(T.rows(), frame_vecs);
+        CubeCover::TraceStreamlines(V, mesh, frame_vecs, max_iter_per_trace, traces, sample_density, is_random_inside, stream_pt_eps);
+        RenderStreamlines(traces, V, T, 1, frame_name, rot_mat);
+        input_traces = std::move(traces);
         break;
       }
       case kGradient: {
         frame_vecs = ComputeGradient(V, mesh, values);
         frame_name = "gradient ";
         frame_list = ExtractFrameVectors(T.rows(), frame_vecs);
+        CubeCover::TraceStreamlines(V, mesh, frame_vecs, max_iter_per_trace, traces, sample_density, is_random_inside, stream_pt_eps);
+        RenderStreamlines(traces, V, T, 1, frame_name, rot_mat);
+        grad_traces = std::move(traces);
         break;
       }
       case kInitPerp:{
         frame_vecs = frames_to_trace;
-        frame_name = "input cross product ";
+        frame_name = "dual input ";
         frame_list = ExtractFrameVectors(T.rows(), frame_vecs);
+        CubeCover::TraceStreamlines(V, mesh, frames_to_trace, max_iter_per_trace,
+                                    traces, sample_density, is_random_inside,
+                                    stream_pt_eps);
+        RenderStreamlines(traces, V, T, 1, frame_name, rot_mat);
+        dual_traces = std::move(traces);
         break;
       }
       case kInitBestMatchGrad: {
         Eigen::MatrixXd grad_vec = ComputeGradient(V, mesh, values);
         std::vector<Eigen::MatrixXd> grad_list = ExtractFrameVectors(T.rows(), grad_vec);
+        frame_vecs = frames_to_trace;
         frame_list = GetBestMatchFrames(grad_list, frames);
-        frame_name = "best mathc input ";
+        frame_name = "best match input ";
+        CubeCover::TraceStreamlines(V, mesh, frame_vecs, max_iter_per_trace, traces, sample_density, is_random_inside, stream_pt_eps);
+        RenderStreamlines(traces, V, T, 1, frame_name, rot_mat);
+        best_match_traces = std::move(traces);
       }
       }
 
-      auto pc_mesh = polyscope::getPointCloud("centroid pc");
-      if(streamline_type == kInitPerp) {
-        CubeCover::TraceStreamlines(V, mesh, frames_to_trace, max_iter_per_trace,
-                                    traces, sample_density, is_random_inside,
-                                    stream_pt_eps);
-        RenderStreamlines(traces, V, T, 1,
-                          frame_name);
-      } else {
-        for(int i = 0; i < frame_list.size(); i++) {
-          CubeCover::TraceStreamlines(V, mesh, frame_list[i], max_iter_per_trace, traces, sample_density, is_random_inside, stream_pt_eps);
-          RenderStreamlines(traces, V, T, 1, frame_name + std::to_string(i) + " ");
-          pc_mesh->addVectorQuantity(frame_name + std::to_string(i), frame_list[i]);
-        }
+      for(int i = 0; i < frame_list.size(); i++) {
+        pc_mesh->addVectorQuantity(frame_name + std::to_string(i), frame_list[i]);
       }
 
     }
@@ -438,6 +465,26 @@ void callback() {
         pc_mesh->addVectorQuantity("gradient " + std::to_string(i), grad_vec[i]);
         tet_mesh->addCellScalarQuantity("error " + std::to_string(i), errs[i]);
       }
+    }
+
+  }
+
+  if (ImGui::CollapsingHeader("Euler Angles", ImGuiTreeNodeFlags_DefaultOpen)) {
+    ImGui::InputDouble("axis 0", &rot_axis[0]);
+    ImGui::InputDouble("axis 1", &rot_axis[1]);
+    ImGui::InputDouble("axis 2", &rot_axis[2]);
+    ImGui::InputDouble("rot angle", (&rot_angle));
+
+    if(ImGui::Button("Compute Rot Mat and update render")) {
+      std::cout << rot_angle << std::endl;
+      rot_mat = Eigen::AngleAxis<double>(rot_angle / 360.0 * 2 * M_PI, rot_axis.normalized());
+      std::cout << rot_mat << std::endl;
+
+      RenderStreamlines(input_traces, V, T, 1, "input ", rot_mat);
+      RenderStreamlines(grad_traces, V, T, 1, "gradient ", rot_mat);
+      RenderStreamlines(dual_traces, V, T, 1, "dual input ", rot_mat);
+      RenderStreamlines(best_match_traces, V, T, 1, "best match input ", rot_mat);
+
     }
   }
 
