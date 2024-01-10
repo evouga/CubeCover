@@ -235,7 +235,15 @@ static Eigen::Vector3d SegmentColor(const Eigen::Vector3d& dir, Eigen::Matrix3d 
 
   double h = 360 / 2 / M_PI * phi;
   double v = 1;
-  double s = std::sin(theta);
+  double theta_e = M_PI / 2;
+  double lambda = M_PI / 9;
+
+  double t = 1;
+  if(theta <= theta_e - lambda) {
+    t = theta / (theta_e - lambda);
+  }
+  int n = 2;
+  double s = std::sin(std::pow(t, n) * theta_e);
 
   Eigen::Vector3d rgb;
   hsv_to_rgb(h, s, v, rgb[0], rgb[1], rgb[2]);
@@ -258,11 +266,6 @@ static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, 
 
     for (int i = 0; i < nsteps-1; i++ ) {
       Eigen::Vector3d edge = traces.at(tid).stream_pts_[i].start_pt_ - traces.at(tid).stream_pts_[i + 1].start_pt_;
-
-      if(edge[2] < 0) {
-        edge *= -1;
-      }
-
       Eigen::Vector3d rgb_color = SegmentColor(edge, rot_mat);
       cur_points.push_back( traces.at(tid).stream_pts_[i].start_pt_ );
       cur_colors.push_back(rgb_color);
@@ -360,6 +363,18 @@ void callback() {
     ImGui::Combo("Tracing Pt Type", (int*)&streamline_tracing_type, "Random Sample Centroid\0Random\0Grid Points\0");
     ImGui::InputInt("Sample Density", &sample_density);
     ImGui::InputDouble("Stream Point Eps", &stream_pt_eps);
+
+    if(ImGui::Button("Grid Points")) {
+      std::vector<Eigen::Vector3d> pts;
+      for(int i = 0; i < T.rows(); i++) {
+        std::vector<std::pair<Eigen::Vector3i, Eigen::Vector3d>> tmp_res = CubeCover::ComputeGridPts(V, mesh, values, i);
+        for(auto& pt : tmp_res) {
+          pts.push_back(pt.second);
+        }
+      }
+      polyscope::registerPointCloud("grid points", pts);
+    }
+
     if(ImGui::Button("Trace Stream lines")) {
       std::vector<CubeCover::Streamline> traces;
       int max_iter_per_trace = 700;
@@ -387,6 +402,7 @@ void callback() {
       }
       case kGradient: {
         frame_vecs = ComputeGradient(V, mesh, values);
+        frame_vecs /= global_rescaling;
         frame_name = "gradient ";
         frame_list = ExtractFrameVectors(T.rows(), frame_vecs);
         if (streamline_tracing_type == kGridPt) {
@@ -415,6 +431,7 @@ void callback() {
       }
       case kInitBestMatchGrad: {
         Eigen::MatrixXd grad_vec = ComputeGradient(V, mesh, values);
+        grad_vec /= global_rescaling;
         std::vector<Eigen::MatrixXd> grad_list = ExtractFrameVectors(T.rows(), grad_vec);
         frame_vecs = frames_to_trace;
         frame_list = GetBestMatchFrames(grad_list, frames);
@@ -482,6 +499,7 @@ void callback() {
 
     if(ImGui::Button("Compute Gradient")) {
       Eigen::MatrixXd grad = ComputeGradient(V, mesh, values);
+      grad /= global_rescaling;
       std::vector<Eigen::MatrixXd> grad_vec = ExtractFrameVectors(T.rows(), grad);
 
       std::vector<Eigen::VectorXd> errs = GetFrameDifference(frames, grad, grad_vec.size());
@@ -496,7 +514,7 @@ void callback() {
 
   }
 
-  if (ImGui::CollapsingHeader("Euler Angles", ImGuiTreeNodeFlags_DefaultOpen)) {
+  if (ImGui::CollapsingHeader("Rotation Matrix", ImGuiTreeNodeFlags_DefaultOpen)) {
     ImGui::InputDouble("axis 0", &rot_axis[0]);
     ImGui::InputDouble("axis 1", &rot_axis[1]);
     ImGui::InputDouble("axis 2", &rot_axis[2]);
@@ -696,6 +714,7 @@ int main(int argc, char *argv[])
 
   // Add the callback
   polyscope::state::userCallback = callback;
+  polyscope::options::autocenterStructures = false;
 
   // visualize!
   polyscope::show();

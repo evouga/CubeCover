@@ -113,55 +113,7 @@ namespace CubeCover {
 		}
 	}
 
-	// Initialize the tets which may contain one or more isolines
-	std::vector<int> InitializeTracingTets(const TetMeshConnectivity& mesh, const Eigen::MatrixXd& values) {
-		int ntets = mesh.nTets();
-
-		auto has_cross = [&mesh, &values](int tet_id, int channel) {
-			double minphi = std::numeric_limits<double>::infinity();
-			double maxphi = -std::numeric_limits<double>::infinity();
-			for (int i = 0; i < 4; i++) {
-				double phival = values(4 * tet_id + i, channel);   // value is defined on the tet soup!
-				minphi = std::min(phival, minphi);
-				maxphi = std::max(phival, maxphi);
-			}
-
-			int minint = int(minphi);
-			int maxint = int(maxphi);
-			bool is_cross = false;
-			for (int isoval = minint; isoval <= maxint && !is_cross; isoval++) {
-				for (int idx1 = 0; idx1 < 4 && !is_cross; idx1++) {
-					for (int idx2 = idx1 + 1; idx2 < 4 && !is_cross; idx2++) {
-						int vidx1 = mesh.tetVertex(tet_id, idx1);
-						int vidx2 = mesh.tetVertex(tet_id, idx2);
-						double val1 = values(4 * tet_id + idx1, channel);
-						double val2 = values(4 * tet_id + idx2, channel);
-						if (val1 > val2) {
-							std::swap(val1, val2);
-							std::swap(vidx1, vidx2);
-						}
-						if (IsCrossing(val1, val2, double(isoval), 0) ||
-							IsCrossing(val1, val2, double(isoval), 1)) {
-							is_cross = true;
-						}
-					}
-				}
-			}
-			return is_cross;
-			};
-		std::vector<int> tet_ids;
-		for (int i = 0; i < ntets; i++) {
-			bool is_cross0 = has_cross(i, 0);
-			bool is_cross1 = has_cross(i, 1);
-			bool is_cross2 = has_cross(i, 2);
-			if ((is_cross0 && is_cross1) || (is_cross0 && is_cross2) || (is_cross1 && is_cross2)) {
-				tet_ids.push_back(i);
-			}
-		}
-		return tet_ids;
-	}
-
-	std::vector<Eigen::Vector3d> ComputeGridPts(const Eigen::MatrixXd& V, const TetMeshConnectivity& mesh, const Eigen::MatrixXd& values, int tet_id) {
+        std::vector<std::pair<Eigen::Vector3i, Eigen::Vector3d>> ComputeGridPts(const Eigen::MatrixXd& V, const TetMeshConnectivity& mesh, const Eigen::MatrixXd& values, int tet_id) {
 		if (values.cols() != 3) {
 			return {};
 		}
@@ -177,14 +129,13 @@ namespace CubeCover {
 
 		for (int c = 0; c < 3; c++) {
 			A.row(c) << 
-				values(mesh.tetVertex(tet_id, 1), c) - values(mesh.tetVertex(tet_id, 0), c),
-				values(mesh.tetVertex(tet_id, 2), c) - values(mesh.tetVertex(tet_id, 0), c),
-				values(mesh.tetVertex(tet_id, 3), c) - values(mesh.tetVertex(tet_id, 0), c);
-			b(c) = values(mesh.tetVertex(tet_id, 0), c);
+				values(4 * tet_id + 1, c) - values(4 * tet_id + 0, c),
+				values(4 * tet_id + 2, c) - values(4 * tet_id + 0, c),
+				values(4 * tet_id + 3, c) - values(4 * tet_id + 0, c);
+			b(c) = values(4 * tet_id + 0, c);
 
 			for (int j = 0; j < 4; j++) {
-				int vid = mesh.tetVertex(tet_id, j);
-				double val = values(vid, c);
+				double val = values(4 * tet_id + j, c);
 				if (val < min_vals[c]) {
 					min_vals[c] = val;
 				}
@@ -196,7 +147,7 @@ namespace CubeCover {
 
 		// prefactorize matrix
 		Eigen::ColPivHouseholderQR<Eigen::MatrixXd> solver(A);
-		std::vector<Eigen::Vector3d> grid_pts;
+		std::vector<std::pair<Eigen::Vector3i, Eigen::Vector3d>> grid_pts;
 
 		for (int k0 = std::ceil(min_vals[0]); k0 <= max_vals[0]; k0++) {
 			for (int k1 = std::ceil(min_vals[1]); k1 <= max_vals[1]; k1++) {
@@ -207,12 +158,12 @@ namespace CubeCover {
 					Eigen::Vector3d sol = solver.solve(b0);
 
 					// inside the tet
-					if (sol[0] >= 0 && sol[1] >= 0 && sol[2] >= 0 && sol[0] + sol[1] + sol[2] <= 1) {
+					if (sol[0] > 0 && sol[1] > 0 && sol[2] > 0 && sol[0] + sol[1] + sol[2] < 1) {
 						Eigen::RowVector3d p = (1 - sol[0] - sol[1] - sol[2]) * V.row(mesh.tetVertex(tet_id, 0));
 						for (int j = 0; j < 3; j++) {
 							p = p + sol[j] * V.row(mesh.tetVertex(tet_id, j + 1));
 						}
-						grid_pts.push_back(p.transpose());
+						grid_pts.push_back({ Eigen::Vector3i(k0, k1, k2), p.transpose()} );
 					}
 				}
 			}
@@ -223,10 +174,11 @@ namespace CubeCover {
 
 
 	bool AdvanceStreamline(const Eigen::MatrixXd& V, const TetMeshConnectivity& mesh, const Eigen::MatrixXd& frames,
-		Streamline& s, double stream_pt_eps, bool is_debug) {
+		Streamline& s, bool is_debug) {
 		int cur_tet_id = s.tet_ids_.back();
 
 		int nvecs = frames.rows() / mesh.nTets();
+                double stream_eps = s.stream_pts_.back().eps_;
 
 		Eigen::MatrixXd cur_tet_frame = frames.block(cur_tet_id * nvecs, 0, nvecs, 3);
 		Eigen::Vector3d cur_point = s.stream_pts_.back().start_pt_;
@@ -248,8 +200,8 @@ namespace CubeCover {
 				max_match = std::abs(cur_match);
 				cur_vec = cur_tet_frame.row(i);
 				if (cur_match < 0) {
-					cur_vec = -cur_vec;
-				}
+                                        cur_vec = -cur_vec;
+                                }
 			}
 		}
 		if (cur_vec.norm() == 0) {
@@ -409,7 +361,8 @@ namespace CubeCover {
 			return false;
 		}
 
-		s.stream_pts_.push_back(StreamPt(intersect_point, cur_vec, next_face_id, stream_pt_eps));
+                s.stream_pts_.push_back(StreamPt(intersect_point, cur_vec, stream_eps, next_face_id));
+
 		s.tet_ids_.push_back(next_tet_id);
 
 		if (next_tet_id == -1) {
@@ -436,7 +389,6 @@ namespace CubeCover {
 		std::vector<std::pair<int, Eigen::Vector3d>> init_tet_ids = RandomSampleStreamPts(V, mesh, num_seeds, is_random_inside);
 		std::vector<std::pair<int, StreamPt>> init_tracing_pts = {};
 
-		int counter = 0;
 		int nstreamlines = init_tet_ids.size();
 
 		int nvecs = frames.rows() / mesh.nTets();
@@ -452,7 +404,7 @@ namespace CubeCover {
 					int cur_start_tet_id = init_tet_ids[i].first;
 					Eigen::Vector3d cur_direction_vec = frames.row(nvecs * cur_start_tet_id + vec_id);
 					cur_direction_vec *= flip_sign;
-					StreamPt cur_stream_pt(init_tet_ids[i].second, cur_direction_vec, -1, eps);
+					StreamPt cur_stream_pt(init_tet_ids[i].second, cur_direction_vec, eps, -1);
 					init_tracing_pts.push_back({ cur_start_tet_id, cur_stream_pt });
 				}
 			}
@@ -481,13 +433,14 @@ namespace CubeCover {
 
 		// this can be parallelized
 		for (int i = 0; i < ntets; i++) {
-			std::vector<Eigen::Vector3d> grid_pts = ComputeGridPts(V, mesh, values, i);
+			std::vector<std::pair<Eigen::Vector3i, Eigen::Vector3d>> grid_pts = ComputeGridPts(V, mesh, values, i);
 			if (!grid_pts.empty()) {
 				for (auto& p : grid_pts) {
 					for (int j = 0; j < nvecs; j++) {
-						for (int orientation = 1; orientation <= -1; orientation -= 2) {
+						for (int orientation = 1; orientation >= -1; orientation -= 2) {
 							Eigen::Vector3d dir = orientation * frames.row(nvecs * i + j);
-							StreamPt stream_pt(p, dir, -1, eps);
+//							StreamPt stream_pt(p.second, dir, p.first[j], i, j);
+                                                        StreamPt stream_pt(p.second, dir, eps, -1);
 							init_tracing_pts.push_back({ i, stream_pt });
 						}
 					}
@@ -505,7 +458,7 @@ namespace CubeCover {
 		int nstreamlines = init_tracing_pts.size();
 		traces.clear();
 
-		std::unordered_set<StreamPt, StreamPt::HashFunction> visited_stream_pts;
+		std::unordered_map<StreamPt, int, StreamPt::HashFunction> visited_stream_pts;
 
 		for (int i = 0; i < nstreamlines; i++) {
 			int cur_start_tet_id = init_tracing_pts[i].first;
@@ -525,42 +478,47 @@ namespace CubeCover {
 				continue;
 			}
 
-			visited_stream_pts.insert(cur_stream_pt);
+                        if(visited_stream_pts.count(cur_stream_pt)) {
+                                visited_stream_pts[cur_stream_pt] += 1;
+                        } else {
+                                visited_stream_pts[cur_stream_pt] = 1;
+                        }
+
 
 			std::unordered_set<StreamTetDir, StreamTetDir::HashFunction> tet_dir_set;
 			tet_dir_set.insert(StreamTetDir(cur_start_tet_id, cur_stream_pt.dir_));
 
 			bool is_debug = false;
-			double eps = cur_stream_pt.eps_;
 
 			for (int j = 0; j < max_iter_per_trace; j++) {
-				if (AdvanceStreamline(V, mesh, frames, t, eps, is_debug)) {
+				if (AdvanceStreamline(V, mesh, frames, t, is_debug)) {
 					StreamPt stream_pt = t.stream_pts_.back();
 					StreamTetDir stream_tet_dir(t.tet_ids_.back(), stream_pt.dir_);
 
 					// this tet has been visited and the tracing direction is the same, we need to stop to prevent 
-					// unneccessary loop
-					if (tet_dir_set.count(stream_tet_dir)) {
-						// has been visited
-						t.tet_ids_.pop_back();
-						t.tet_face_ids_.pop_back();
-						t.stream_pts_.pop_back();
-						break;
-					}
-					else {
-						tet_dir_set.insert(stream_tet_dir);
+					// unnecessary loop
+                                        if (tet_dir_set.count(stream_tet_dir)) {
+                                                // has been visited
+                                                t.tet_ids_.pop_back();
+                                                t.tet_face_ids_.pop_back();
+                                                t.stream_pts_.pop_back();
+                                                break;
+                                        }
+                                        else {
+                                                tet_dir_set.insert(stream_tet_dir);
 
-						if (visited_stream_pts.count(stream_pt)) {
-							// has been visited
-							t.tet_ids_.pop_back();
-							t.tet_face_ids_.pop_back();
-							t.stream_pts_.pop_back();
-							break;
-						}
-						else {
-							visited_stream_pts.insert(stream_pt);
-						}
-					}
+                                                if (visited_stream_pts.count(stream_pt)) {
+                                                        // has been visited
+                                                        t.tet_ids_.pop_back();
+                                                        t.tet_face_ids_.pop_back();
+                                                        t.stream_pts_.pop_back();
+                                                        break;
+                                                }
+                                                else {
+                                                        visited_stream_pts[stream_pt] = 1;
+                                                }
+                                        }
+
 				}
 				else {
 					break;
