@@ -135,6 +135,51 @@ static Eigen::MatrixXd PaintPhi(const Eigen::VectorXd& phi, Eigen::VectorXd* bri
   return color;
 }
 
+// Helper functions
+double cc(double na, double nd) {
+  return na * std::cos(nd * M_PI / 180.0);
+}
+
+double ss(double na, double nd) {
+  return na * std::sin(nd * M_PI / 180.0);
+}
+
+// Main function to convert vectors to RGB
+Eigen::Vector3d boys2rgb(const Eigen::Vector3d& v) {
+  Eigen::Vector3d color;
+
+  Eigen::Vector3d norm = v.normalized();
+
+  double x = norm[0], y = norm[1], z = norm[2];
+
+  // Calculations similar to Python code
+  double x2 = x * x, y2 = y * y, z2 = z * z;
+  double x3 = x * x2, y3 = y * y2, z3 = z * z2;
+  double z4 = z * z2;
+  double xy = x * y, xz = x * z, yz = y * z;
+
+  // Constants
+  double s0 = -23.0;
+  double s1 = 227.9;
+  double s2 = 251.0;
+  double s3 = 125.0;
+
+  double ss23 = ss(2.71, s0);
+  double cc23 = cc(2.71, s0);
+  double ss45 = ss(2.12, s1);
+  double cc45 = cc(2.12, s1);
+  double ss67 = ss(0.972, s2);
+  double cc67 = cc(0.972, s2);
+  double ss89 = ss(0.868, s3);
+  double cc89 = cc(0.868, s3);
+
+  double w_x = 4.1925, trl_x = -2.0425;
+  double w_y = 4.0217, trl_y = -1.8541;
+  double w_z = 4.0694, trl_z = -2.1899;
+
+  return color;
+}
+
 static Eigen::MatrixXd ComputeGradient(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectivity& mesh, const Eigen::MatrixXd& values) {
   int nvecs = values.cols();
   int ntets = mesh.nTets();
