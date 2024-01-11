@@ -10,4 +10,4 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${EIGEN3_INCLUDE_DIR} ../../sr
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 14)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD_REQUIRED ON)
 
-target_link_libraries(${PROJECT_NAME} cubecover polyscope)
+target_link_libraries(${PROJECT_NAME} cubecover polyscope igl::core)

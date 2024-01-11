@@ -3,6 +3,12 @@
 #include <filesystem>
 #include <iostream>
 
+#include <igl/file_dialog_open.h>
+#include <igl/file_dialog_save.h>
+#include <igl/writeMESH.h>
+#include <igl/writeOBJ.h>
+#include <igl/readOBJ.h>
+
 #include "polyscope/polyscope.h"
 #include "polyscope/curve_network.h"
 #include "polyscope/surface_mesh.h"
@@ -13,6 +19,7 @@
 #include "ReadFrameField.h"
 #include "readMeshFixed.h"
 #include "ReadHexEx.h"
+#include "WriteHexEx.h"
 #include "CubeCover.h"
 #include "SurfaceExtraction.h"
 #include "StreamlinesExtraction.h"
@@ -41,6 +48,46 @@ enum StreamLineTracingType {
 	kRandom = 1,            // randomly sample the tet ids and use a random point inside tets for starting point
 	kGridPt = 2,            // use integer grid points
 };
+
+static std::pair<Eigen::MatrixXd, Eigen::MatrixXi> ExportBoundaryMesh(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectivity& mesh) {
+	// make a mesh out of all of the boundary faces
+	int nbdry = 0;
+	int nfaces = mesh.nFaces();
+	for (int i = 0; i < nfaces; i++) {
+		if (mesh.isBoundaryFace(i))
+			nbdry++;
+	}
+	Eigen::MatrixXd bdry_V(V.rows(), 3);
+	Eigen::MatrixXi bdry_F(nbdry, 3);
+
+	std::unordered_map<int, int> vid_to_bryid;
+
+	int curidx = 0;
+	int curvidx = 0;
+	for (int i = 0; i < nfaces; i++) {
+		if (mesh.isBoundaryFace(i)) {
+			for (int j = 0; j < 3; j++) {
+				int vid = mesh.faceVertex(i, j);
+				if (vid_to_bryid.count(vid)) {
+					bdry_F(curidx, j) = vid_to_bryid[vid];
+				}
+				else {
+					vid_to_bryid[vid] = curvidx;
+					bdry_F(curidx, j) = curvidx;
+					bdry_V.row(curvidx++) = V.row(vid);
+				}
+			}
+			// fix triangle orientations
+			int tet = mesh.faceTet(i, 1);
+			if (tet == -1) {
+				std::swap(bdry_F(curidx, 0), bdry_F(curidx, 1));
+			}
+			curidx++;
+		}
+	}
+	bdry_V.conservativeResize(curvidx, Eigen::NoChange);
+	return { bdry_V, bdry_F };
+}
 
 static void RenderIsoSurfaces(const std::vector<Eigen::MatrixXd>& isoVs, const std::vector<Eigen::MatrixXi>& isoFs, const std::vector<int>& iso_vals, int iso_surface_idx) {
   for(int i = 0; i < isoVs.size(); i++) {
@@ -328,26 +375,6 @@ static Eigen::Vector3d SegmentColor(const Eigen::Vector3d& dir, Eigen::Matrix3d 
   Eigen::Vector3d dir_hat = dir.normalized();
 
   return Boys2RBG(dir_hat);
-
- // dir_hat = rot_mat * dir_hat;
- // double phi = atan2(dir_hat[1], dir_hat[0]) + M_PI;
- // double theta = acos(dir_hat[1]);
-
- // double h = 360 / 2 / M_PI * phi;
- // double v = 1;
- // double theta_e = M_PI / 2;
- // double lambda = M_PI / 9;
-
- // double t = 1;
- // if(theta <= theta_e - lambda) {
-	//t = theta / (theta_e - lambda);
- // }
- // int n = 2;
- // double s = std::sin(std::pow(t, n) * theta_e);
-
- // Eigen::Vector3d rgb;
- // hsv_to_rgb(h, s, v, rgb[0], rgb[1], rgb[2]);
- // return rgb;
 }
 
 static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, const Eigen::MatrixXd& V, const Eigen::MatrixXi& T, int nframes = 1, std::string name = "", Eigen::Matrix3d rot_mat = Eigen::Matrix3d::Identity()) {
@@ -385,6 +412,51 @@ static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, 
   streamlines->setTransparency(1);
   streamlines->setRadius(0.002);
 }
+
+static void GetStreamlines(const std::vector<CubeCover::Streamline>& traces, Eigen::MatrixXd& p_start, Eigen::MatrixXd& p_end, Eigen::MatrixXd& colors, Eigen::Matrix3d rot_mat = Eigen::Matrix3d::Identity()) {
+	if (traces.empty()) {
+		return;
+	}
+	int ntraces = traces.size();
+
+	p_start.resize(10000, 3);
+	p_end.resize(10000, 3);
+	colors.resize(10000, 4);
+
+	int id = 0;
+
+	for (int tid = 0; tid < ntraces; tid++) {
+		int nsteps = traces.at(tid).stream_pts_.size();
+
+		for (int i = 0; i < nsteps - 1; i++) {
+			Eigen::Vector3d edge = traces.at(tid).stream_pts_[i].start_pt_ - traces.at(tid).stream_pts_[i + 1].start_pt_;
+			Eigen::Vector3d rgb_color = SegmentColor(edge, rot_mat);
+
+			if (id >= p_start.rows()) {
+				p_start.conservativeResize(p_start.rows() + 10000, Eigen::NoChange);
+				p_end.conservativeResize(p_end.rows() + 10000, Eigen::NoChange);
+				colors.conservativeResize(colors.rows() + 10000, Eigen::NoChange);
+			}
+
+			p_start.row(id) = traces[tid].stream_pts_[i].start_pt_.transpose();
+			p_end.row(id) = traces[tid].stream_pts_[i + 1].start_pt_.transpose();
+			colors.row(id) << rgb_color[0], rgb_color[1], rgb_color[2], 1;
+			id++;
+		}
+	}
+	p_start.conservativeResize(id, Eigen::NoChange);
+	p_end.conservativeResize(id, Eigen::NoChange);
+	colors.conservativeResize(id, Eigen::NoChange);
+}
+
+static void SaveStreamlines(const std::string file, const Eigen::MatrixXd& p_start, const Eigen::MatrixXd& p_end, const Eigen::MatrixXd& colors) {
+	std::ofstream ofs(file);
+	for (int i = 0; i < p_start.rows(); i++) {
+		ofs << p_start.row(i) << " " << p_end.row(i) << " " << colors.row(i) << std::endl;
+	}
+}
+
+
 
 static Eigen::Matrix3d Euler2RotMat(const double roll, const double pitch, const double yaw )
 {
@@ -440,8 +512,71 @@ std::string save_folder;
 
 std::vector<CubeCover::Streamline> input_traces, grad_traces, dual_traces, best_match_traces;
 
+
+void SaveforRender(std::string folder) {
+	if (!std::filesystem::exists(folder)) {
+		std::filesystem::create_directory(folder);
+	}
+	Eigen::MatrixXd bnd_V;
+	Eigen::MatrixXi bnd_F;
+	std::tie(bnd_V, bnd_F) = ExportBoundaryMesh(V, mesh);
+
+	igl::writeOBJ(folder + "/boundary_mesh.obj", bnd_V, bnd_F);
+
+	Eigen::MatrixXd p_start, p_end, colors;
+
+	// stream lines
+	CubeCover::TraceStreamlines(V, mesh, frames_to_trace, values, 700, dual_traces, stream_pt_eps);
+	GetStreamlines(dual_traces, p_start, p_end, colors);
+	SaveStreamlines(folder + "/stream_lines.txt", p_start, p_end, colors);
+
+	// isolines
+	Eigen::MatrixXd P;
+	Eigen::MatrixXi E;
+
+	Eigen::MatrixXd P2;
+	Eigen::MatrixXi E2;
+	CubeCover::ExtractIsolines(V, mesh, values, P, E, P2, E2);
+
+	Eigen::MatrixXd iso_start_pt((E.rows() + E2.rows()), 3), iso_end_pt((E.rows() + E2.rows()), 3), iso_colors((E.rows() + E2.rows()), 4);
+
+	for (int i = 0; i < E.rows(); i++) {
+		int vid0 = E(i, 0);
+		iso_start_pt.row(i) = P.row(vid0);
+		int vid1 = E(i, 1);
+		iso_end_pt.row(i) = P.row(vid1);
+		iso_colors.row(i) << 0, 0, 0, 1;
+	}
+
+	for (int i = 0; i < E2.rows(); i++) {
+		int vid0 = E2(i, 0);
+		iso_start_pt.row(E.rows() + i) = P2.row(vid0);
+		int vid1 = E2(i, 1);
+		iso_end_pt.row(E.rows() + i) = P2.row(vid1);
+		iso_colors.row(E.rows() + i) << 0, 0, 0, 1;
+	}
+	SaveStreamlines(folder + "/isolines.txt", iso_start_pt, iso_end_pt, iso_colors);
+}
+
 void callback() {
   ImGui::PushItemWidth(100);
+  if (ImGui::CollapsingHeader("Save Options")) {
+	  if (ImGui::Button("Save Hexex")) {
+		  std::string file = igl::file_dialog_save();
+		  CubeCover::writeHexEx(file, V, T, values);
+	  }
+	  if (ImGui::Button("Save Boundary Mesh")) {
+		  std::string file = igl::file_dialog_save();
+		  Eigen::MatrixXd bdryV;
+		  Eigen::MatrixXi bdryF;
+		  std::tie(bdryV, bdryF) = ExportBoundaryMesh(V, mesh);
+		  igl::writeOBJ(file, bdryV, bdryF);
+	  }
+	  if (ImGui::Button("Save For Render")) {
+		  std::string folder = igl::file_dialog_save();
+		  SaveforRender(folder);
+	  }
+  }
 
   if (ImGui::CollapsingHeader("Integration Options", ImGuiTreeNodeFlags_DefaultOpen)) {
 	ImGui::Combo("Paramaterization Type", (int*)&param_type, "Seamless\0Integer grid\0");
@@ -668,10 +803,8 @@ std::pair<Eigen::MatrixXd, Eigen::MatrixXi> GetTetSoup(const Eigen::MatrixXd& V,
 }
 
 
-int main(int argc, char *argv[])
-{
-  if (argc != 3 && argc != 4)
-  {
+int main(int argc, char *argv[]) {
+  if (argc != 3 && argc != 4) {
 	std::cerr << "Usage: isosurfaceviewer (.mesh file) (.bfra file or .fra file) [.hexex file]" << std::endl;
 	return -1;
   }
@@ -687,14 +820,12 @@ int main(int argc, char *argv[])
 	  
 
   Eigen::MatrixXi F;
-  if (!CubeCover::readMESH(meshfile, V, T, F))
-  {
+  if (!CubeCover::readMESH(meshfile, V, T, F)) {
 	std::cerr << "could not read .mesh file " << meshfile << std::endl;
 	return -1;
   }
 
-  if (!CubeCover::readFrameField(frafile, permfile, T, frames, assignments, true))
-  {
+  if (!CubeCover::readFrameField(frafile, permfile, T, frames, assignments, true)) {
 	std::cerr << "could not read frames/permutations" << std::endl;
 	return -1;
   }
@@ -738,34 +869,9 @@ int main(int argc, char *argv[])
 
   mesh = CubeCover::TetMeshConnectivity(T);
 
-  // make a mesh out of all of the boundary faces
-  int nbdry = 0;
-  int nfaces = mesh.nFaces();
-  for (int i = 0; i < nfaces; i++)
-  {
-	if (mesh.isBoundaryFace(i))
-	  nbdry++;
-  }
-  Eigen::MatrixXi bdryF(nbdry, 3);
-  int curidx = 0;
-  for (int i = 0; i < nfaces; i++)
-  {
-	if (mesh.isBoundaryFace(i))
-	{
-	  for (int j = 0; j < 3; j++)
-	  {
-		bdryF(curidx, j) = mesh.faceVertex(i, j);
-
-	  }
-	  // fix triangle orientations
-	  int tet = mesh.faceTet(i, 0);
-	  if (tet == -1)
-	  {
-		std::swap(bdryF(curidx, 0), bdryF(curidx, 1));
-	  }
-	  curidx++;
-	}
-  }
+  Eigen::MatrixXd bdryV;
+  Eigen::MatrixXi bdryF;
+  std::tie(bdryV, bdryF) = ExportBoundaryMesh(V, mesh);
 
   if (hexexfile == "") {
 	  IntegrateFrames(frames, V, T, param_type, assignments, values, global_rescaling);
@@ -773,8 +879,7 @@ int main(int argc, char *argv[])
   else {
 	  Eigen::MatrixXd V1;
 	  Eigen::MatrixXi T1;
-	  if (!CubeCover::readHexEx(hexexfile, V1, T1, values))
-	  {
+	  if (!CubeCover::readHexEx(hexexfile, V1, T1, values)) {
 		  std::cerr << "error reading the .hexex file" << std::endl;
 		  return -1;
 	  }
@@ -789,15 +894,13 @@ int main(int argc, char *argv[])
   
 
   std::vector<Eigen::MatrixXd> frame_vec = ExtractFrameVectors(T.rows(), frames);
-  stream_pt_eps = 0;
+  stream_pt_eps = 0.2;
 
   polyscope::init();
 
-  auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", V, bdryF);
+  auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", bdryV, bdryF);
   psMesh->setTransparency(0.2);
   psMesh->setEnabled(false);
-
-  igl::writeOBJ("boundary_mesh.obj", V, bdryF);
 
   Eigen::MatrixXd soup_V;
   Eigen::MatrixXi soup_T;
