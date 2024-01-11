@@ -155,7 +155,7 @@ Eigen::Vector3d Boys2RBG(const Eigen::Vector3d& v) {
   // Calculations similar to Python code
   double x2 = x * x, y2 = y * y, z2 = z * z;
   double x3 = x * x2, y3 = y * y2, z3 = z * z2;
-  double z4 = z * z2;
+  double z4 = z2 * z2;
   double xy = x * y, xz = x * z, yz = y * z;
 
   // Constants
@@ -386,9 +386,7 @@ static void RenderStreamlines(const std::vector<CubeCover::Streamline>& traces, 
   streamlines->setRadius(0.002);
 }
 
-static Eigen::Matrix3d Euler2RotMat(const double roll,
-									const double pitch,
-									const double yaw )
+static Eigen::Matrix3d Euler2RotMat(const double roll, const double pitch, const double yaw )
 {
   Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
   Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
@@ -669,6 +667,7 @@ std::pair<Eigen::MatrixXd, Eigen::MatrixXi> GetTetSoup(const Eigen::MatrixXd& V,
   return {soup_V, soup_T};
 }
 
+
 int main(int argc, char *argv[])
 {
   if (argc != 3 && argc != 4)
@@ -797,6 +796,8 @@ int main(int argc, char *argv[])
   auto *psMesh = polyscope::registerSurfaceMesh("Boundary Mesh", V, bdryF);
   psMesh->setTransparency(0.2);
   psMesh->setEnabled(false);
+
+  igl::writeOBJ("boundary_mesh.obj", V, bdryF);
 
   Eigen::MatrixXd soup_V;
   Eigen::MatrixXi soup_T;
