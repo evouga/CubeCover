@@ -49,6 +49,28 @@ enum StreamLineTracingType {
 	kGridPt = 2,            // use integer grid points
 };
 
+static Eigen::MatrixXd NormalizePtsGivenCenterAndScalingRatio(const Eigen::MatrixXd& pos, Eigen::RowVector3d& center, double& scaling_ratio) {
+  int npts = pos.rows();
+  Eigen::MatrixXd normalize_pts = pos;
+  for(int i = 0; i < npts; i++) {
+    normalize_pts.row(i) = (normalize_pts.row(i) - center) / scaling_ratio + Eigen::RowVector3d(0.5, 0.5, 0.5);
+  }
+  return normalize_pts;
+}
+
+// normalize point clouds to [-1, 1] x [-1, 1] x [-1, 1]
+static Eigen::MatrixXd NormalizePts(const Eigen::MatrixXd& pos, Eigen::RowVector3d& center, double& scaling_ratio) {
+  Eigen::RowVector3d min_corner, max_corner;
+  min_corner = pos.colwise().minCoeff().transpose();
+  max_corner = pos.colwise().maxCoeff().transpose();
+
+  center = (min_corner + max_corner) / 2;
+  scaling_ratio = (max_corner - min_corner).maxCoeff();
+
+  return NormalizePtsGivenCenterAndScalingRatio(pos, center, scaling_ratio);
+
+}
+
 static std::pair<Eigen::MatrixXd, Eigen::MatrixXi> ExportBoundaryMesh(const Eigen::MatrixXd& V, const CubeCover::TetMeshConnectivity& mesh) {
 	// make a mesh out of all of the boundary faces
 	int nbdry = 0;
@@ -521,6 +543,10 @@ void SaveforRender(std::string folder) {
 	Eigen::MatrixXi bnd_F;
 	std::tie(bnd_V, bnd_F) = ExportBoundaryMesh(V, mesh);
 
+        double scaling_ratio;
+        Eigen::RowVector3d center;
+        bnd_V = NormalizePts(bnd_V, center, scaling_ratio);
+
 	igl::writeOBJ(folder + "/boundary_mesh.obj", bnd_V, bnd_F);
 
 	Eigen::MatrixXd p_start, p_end, colors;
@@ -528,6 +554,9 @@ void SaveforRender(std::string folder) {
 	// stream lines
 	CubeCover::TraceStreamlines(V, mesh, frames_to_trace, values, 700, dual_traces, stream_pt_eps);
 	GetStreamlines(dual_traces, p_start, p_end, colors);
+
+        p_start = NormalizePtsGivenCenterAndScalingRatio(p_start, center, scaling_ratio);
+        p_end = NormalizePtsGivenCenterAndScalingRatio(p_end, center, scaling_ratio);
 	SaveStreamlines(folder + "/stream_lines.txt", p_start, p_end, colors);
 
 	// isolines
@@ -555,6 +584,10 @@ void SaveforRender(std::string folder) {
 		iso_end_pt.row(E.rows() + i) = P2.row(vid1);
 		iso_colors.row(E.rows() + i) << 0, 0, 0, 1;
 	}
+
+        iso_start_pt = NormalizePtsGivenCenterAndScalingRatio(iso_start_pt, center, scaling_ratio);
+        iso_end_pt = NormalizePtsGivenCenterAndScalingRatio(iso_end_pt, center, scaling_ratio);
+
 	SaveStreamlines(folder + "/isolines.txt", iso_start_pt, iso_end_pt, iso_colors);
 }
 
