@@ -53,7 +53,7 @@ static Eigen::MatrixXd NormalizePtsGivenCenterAndScalingRatio(const Eigen::Matri
   int npts = pos.rows();
   Eigen::MatrixXd normalize_pts = pos;
   for(int i = 0; i < npts; i++) {
-    normalize_pts.row(i) = (normalize_pts.row(i) - center) / scaling_ratio + Eigen::RowVector3d(0.5, 0.5, 0.5);
+    normalize_pts.row(i) = (normalize_pts.row(i) - center) / scaling_ratio;
   }
   return normalize_pts;
 }
