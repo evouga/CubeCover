@@ -150,7 +150,34 @@ static bool IntegrateFrames(const Eigen::MatrixXd& frames, const Eigen::MatrixXd
 	opt.verbose = true;
   }
   Eigen::MatrixXd to_round = global_rescaling * frames;
-  return CubeCover::cubeCover(V, T, to_round, assignments, values, opt);
+  bool is_success = CubeCover::cubeCover(V, T, to_round, assignments, values, opt);
+
+//  int ntets = T.rows();
+//  CubeCover::TetMeshConnectivity mesh(T);
+//  for(int tid = 0; tid < ntets; tid++) {
+//        std::array<int, 3> bnd_vert_id_in_tet = {-1, -1, -1};
+//        for(int i = 0; i < 4; i++) {
+//          int fid = mesh.tetFace(tid, i);
+//          if(mesh.isBoundaryFace(fid)) {
+//                for(int k = 0; k < 3; k++) {
+//                  int vid = mesh.faceVertex(fid, k);
+//                  for(int vi = 0; vi < 4; vi++) {
+//                    if(mesh.tetVertex(tid, vi) == vid) {
+//                      for(int c = 0; c < 3; c++) {
+//                        int val = std::round(values(4 * tid + vi, c));
+//                        if(std::abs(values(4 * tid + vi, c) - val) < 1e-3) {
+//                          values(4 * tid + vi, c) = val;
+//                        }
+//                      }
+//                    }
+//                  }
+//                }
+//                break;
+//          }
+//        }
+//  }
+
+  return is_success;
 }
 
 static void hsv_to_rgb(
@@ -516,7 +543,7 @@ Eigen::MatrixXd frames, frames_to_trace;
 Eigen::MatrixXi assignments;
 Eigen::MatrixXd values;
 
-double global_rescaling = 1.0;
+double global_rescaling = 10;
 int sample_density = 100;
 double stream_pt_eps = 1e-2;
 
@@ -526,7 +553,7 @@ double rot_angle = 0;
 
 Eigen::Matrix3d rot_mat = Eigen::Matrix3d::Identity();
 
-ParametrizationType param_type = kSeamless;
+ParametrizationType param_type = kIntegerGrid;
 StreamLineType streamline_type = kInitPerp;
 StreamLineTracingType streamline_tracing_type = kRandomCentroid;
 
@@ -862,6 +889,8 @@ int main(int argc, char *argv[]) {
 	std::cerr << "could not read frames/permutations" << std::endl;
 	return -1;
   }
+
+  std::cout << "tet mesh: " << T.rows() << ", frame size: " << frames.rows() << std::endl;
 
   int vpe = frames.rows() / T.rows();
   if(vpe != 3) {
