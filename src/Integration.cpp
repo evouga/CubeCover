@@ -619,6 +619,9 @@ namespace CubeCover {
                 std::cout << "Problem residual: " << (MIPA * result - MIPrhs).norm() << std::endl;
             }
 
+            for (int i : intdofs)
+                result[i] = std::round(result[i]);
+
             Eigen::VectorXd augresult(result.size() + 1);
             augresult.segment(0, result.size()) = result;
             augresult[result.size()] = 1;
