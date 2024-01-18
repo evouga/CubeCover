@@ -1120,15 +1120,15 @@ void MintGUI::load_state_from_output_dir()
     for (const auto  &entry : fs::directory_iterator(path_outdir))
     {
         // std::cout << entry.path() << std::endl;
-		std::string tmp =  entry.path().u8string();
+		std::string tmp =  entry.path().string();
         FileParts fp = fileparts(tmp);
         if (fp.ext == ".mom"){
-            folder_contents.push_back( entry.path().u8string());
+            folder_contents.push_back( entry.path().string());
             file_names.push_back( fp.name );
         }
 
         if (fp.ext == ".fra"){
-            folder_contents_fra.push_back( entry.path().u8string());
+            folder_contents_fra.push_back( entry.path().string());
             file_names_fra.push_back( fp.name );
         }
 
