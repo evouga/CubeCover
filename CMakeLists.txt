@@ -102,3 +102,5 @@ if(BUILD_BINARIES)
   add_subdirectory(tools/seamless)
   add_subdirectory(tools/integergrid)
 endif()
+
+add_subdirectory(tools/bfra2fra)
