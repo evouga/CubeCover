@@ -247,8 +247,8 @@ end
 
 
     field = importFRA(in_field);
-    lf = Lfield_R9T_R22T(field);
-    lf = reshape(lf, 22, []);
+    % lf = Lfield_R9T_R22T(field);
+    % lf = reshape(lf, 22, []);
      
     field_subdiv = repelem(field, 1, 1, 11);
 
